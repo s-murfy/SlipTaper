@@ -1,0 +1,22 @@
+# Input file for Tapered Slip
+&MESHFILE name= 'southamerica_mod_quadrilateral_coords.dat'   / 
+
+# Define the discretization along the strike (nx_cells) and downdip (nz_cells)
+#  taper : this is the distance in metres that the slip taper is applied 
+#
+&MESHGRID nx_cells=10, nz_cells=10, taper=15.d3 /
+
+# Choose quadrangle cell that slip is centred on
+#
+#   surface_depth : if one of the nodes along the quadrangle edge is above this 
+#                   value it is assumed to be a surface and the taper is not applied 
+#   rake          : slip rake is added to hysea file 
+&CELLCHOICE	cell=28, surface_depth=-100.d0, rake=90.d0/
+
+# Choose quadrangle cell that slip is centred on
+#
+#   verbose      : this sets the output level 
+#                       0: just the lat/lon files (vtk and HySEA) are produced
+#                       1: files with the intermediat utm coordinates are outputed in vtk format
+#                       2: some internal inputs from the code are written to screen
+&OUTPUT verbose=0 /
