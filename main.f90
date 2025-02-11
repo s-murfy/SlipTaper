@@ -109,7 +109,7 @@ if (output_level >= 2) write(*,*) 'output slip in lat/lon coordinates'
 write(out_file,'(a15,i3.3)') 'slip_taper_geo_',original_slipping_cell
 call write_out(geomesh,bc_dist,slip,out_file)
 
-call hysea_output(amesh,slip,slip_rake,out_file)
+call hysea_output(geomesh,slip,slip_rake,out_file)
 
 stop 
 end program taper_slip

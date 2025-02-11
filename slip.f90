@@ -38,7 +38,7 @@ bc_dist(edge_x(qnode_1,qnode_4,:)) = i_value
 ! if any node is equal to or above surface leave out of distance calculation meaing taper is not applied
 not_surface = .true. 
 do i = 1,size(edge_x,3)
-    if (edge_x(qnode_2,qnode_3,i) >= surface-0.001) then   ! the 0.001 is to account for possible rounding error 
+    if (amesh%pz(edge_x(qnode_2,qnode_3,i)) >= surface-0.001) then   ! the 0.001 is to account for possible rounding error 
         not_surface = .false.
         exit 
     endif 
