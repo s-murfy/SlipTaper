@@ -61,6 +61,9 @@ NAMELIST / MESHGRID / nx_cells,nz_cells,taper
 NAMELIST / CELLCHOICE / cell,surface_depth, rake
 NAMELIST / OUTPUT / verbose
 
+! set default value
+verbose = 1
+
 open(11,file='input.txt',status='old',action='read')
 read(11,nml=MESHFILE)
 read(11,nml=MESHGRID)
