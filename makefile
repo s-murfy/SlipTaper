@@ -1,7 +1,7 @@
 # Makefile
 #
-#FC = gfortran 
-FC = ifx 
+FC = gfortran 
+#FC = ifx 
 
 OBJ = generic.o georef.o LAT_mesh.o lists.o distance.o io.o slip.o main.o 
 

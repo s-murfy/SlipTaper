@@ -185,7 +185,9 @@ large_cells: do k = 1,qmesh%Ncells
       enddo alongstrike  
    enddo downdip
 
-   if (output_level >= 2)  write(*,*)'est. cell, width, length',k,sqrt((xe-xs)**2+(ye-ys)**2+(ze-zs)**2),sqrt((x(2)-x(1))**2+(y(2)-y(1))**2+(z(2)-z(1))**2)
+   if (output_level >= 2)  write(*,*)'est. cell, width, length',k,               &
+                   sqrt((xe-xs)**2+(ye-ys)**2+(ze-zs)**2),                       &
+                   sqrt((x(2)-x(1))**2+(y(2)-y(1))**2+(z(2)-z(1))**2)
 enddo large_cells
 
 
@@ -1566,8 +1568,10 @@ real(pr),intent(in) :: rake
 type(mesh),intent(in) :: amesh
 character(30) :: out_file  ! name of output file
 character(40) :: filename  ! name of output file with extension
+real(pr), parameter :: kilo = 1000.d0
 
-character(len=*), parameter :: fmt ="(I3,12E14.6)"
+character(len=*), parameter :: fmt ="(12E14.6)"
+! character(len=*), parameter :: fmt ="(I3,12E14.6)"
 !character(len=*), parameter :: fmt ="(I3,F8.4,F8.4,F8.0,F8.4,F8.4,F8.0,F8.4,F8.4,F8.0,F8.4,F8.4)"
 integer :: i,n1,n2,n3
 
@@ -1582,7 +1586,12 @@ do i =1,amesh%Ncells
    n2 = amesh%cell(i,2)
    n3 = amesh%cell(i,3)
 
-   write(11,fmt) i,amesh%py(n1),amesh%px(n1),amesh%pz(n1),amesh%py(n2),amesh%px(n2),amesh%pz(n2),amesh%py(n3),amesh%px(n3),amesh%pz(n3),rake,slip(i)
+   if (slip(i)> 0.001) then
+     write(11,fmt) amesh%py(n1),amesh%px(n1),abs(amesh%pz(n1))/kilo,         &
+                 amesh%py(n2),amesh%px(n2),abs(amesh%pz(n2))/kilo,         &
+                 amesh%py(n3),amesh%px(n3),abs(amesh%pz(n3))/kilo,         &
+                 rake,slip(i)
+   endif 
 enddo 
 close(11)
 

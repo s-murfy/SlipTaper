@@ -40,6 +40,7 @@ not_surface = .true.
 do i = 1,size(edge_x,3)
     if (amesh%pz(edge_x(qnode_2,qnode_3,i)) >= surface-0.001) then   ! the 0.001 is to account for possible rounding error 
         not_surface = .false.
+        ! write(*,*) 'surface node found',amesh%pz(edge_x(qnode_2,qnode_3,i)),surface
         exit 
     endif 
 enddo 
