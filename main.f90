@@ -12,7 +12,7 @@ real(pr),allocatable,dimension(:,:) :: fault_lon,fault_lat,fault_z
 real(pr),allocatable,dimension(:,:) :: quad_lon,quad_lat,quad_z,quad_x,quad_y
 integer,allocatable,dimension(:,:,:) :: edge_x,edge_z
 integer,allocatable,dimension(:):: tri2quad
-real(pr),allocatable,dimension(:):: bc_dist
+real(pr),allocatable,dimension(:):: bc_dist,edge_dist
 real(pr) :: accuracy
 real(pr), dimension(2) :: flenghts,fwidths
 real(pr), allocatable, dimension(:) :: central_dist,slip,rect_slip
@@ -25,6 +25,7 @@ integer :: anticlockwise
 character(:),allocatable :: fname 
 real(pr) :: slip_rake,surface,taper_dist
 integer :: output_level
+logical :: edge_exist
 
 ! reaad input file 
 call read_input(fname,nx,nz,slipping_cell,taper_dist,slip_rake,surface,output_level)
@@ -75,13 +76,13 @@ call create_tri_mesh(qmesh,nx,nz,amesh,edge_x,edge_z,tri2quad,output_level)
 
 ! ! calculate distance between all points on mesh
 if (output_level >= 2) write(*,*) 'Calculate border distances '
-call boundary_dist(slipping_cell,qmesh,amesh,edge_x,edge_z,surface,bc_dist)
+call boundary_dist(slipping_cell,qmesh,amesh,edge_x,edge_z,surface,bc_dist,edge_dist,edge_exist)
 
 
 ! ! calc tapered slip 
 !call tapered_slip(amesh,dist,central_dist,slip)
 if (output_level >= 2) write(*,*) 'calculate slip on fault...'
-call add_slip(slipping_cell,qmesh,amesh,edge_x,edge_z,tri2quad,bc_dist,taper_dist,slip)
+call add_slip(slipping_cell,qmesh,amesh,edge_x,edge_z,tri2quad,bc_dist,edge_dist,edge_exist,taper_dist,slip)
 
 ! ! calculate tapered slip and transform mesh to rectilinear cells 
 ! call tapered_slip_rectangle(amesh,dist,central_dist,rect_mesh,rect_slip)
