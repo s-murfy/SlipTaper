@@ -17,7 +17,7 @@ integer,intent(in) :: slipping_cell
 integer :: qnode_1,qnode_2,qnode_3,qnode_4
 logical :: fast ,not_surface
 integer :: i
-logical :: edge_12,edge_34,edge_14,edge_exist
+logical :: edge_12,edge_34,edge_14,edge_23,edge_exist
 
 
 qnode_1 = qmesh%cell(slipping_cell,1)
@@ -42,6 +42,8 @@ i_value = 10000000._pr  ! use a large number to generate for the generation of p
 ! bc_dist(edge_x(qnode_1,qnode_4,:)) = i_value  
 
 ! check if any of the edges are interior edges 
+edge_23 = interior_edge(qmesh,qnode_2,qnode_3,slipping_cell)
+
 edge_12 = interior_edge(qmesh,qnode_1,qnode_2,slipping_cell)
 edge_34 = interior_edge(qmesh,qnode_3,qnode_4,slipping_cell)
 edge_14 = interior_edge(qmesh,qnode_1,qnode_4,slipping_cell)
@@ -97,7 +99,16 @@ enddo
 
 
 if (not_surface) then 
-    bc_dist(edge_x(qnode_2,qnode_3,:)) = i_value !if not on surface include in border
+
+    if(edge_23) then 
+        bc_dist(edge_x(qnode_2,qnode_3,:)) = i_value !if not on surface include in border
+    else
+        edge_dist(edge_x(qnode_2,qnode_3,:)) = i_value
+        do i =1,qmesh%Nnodes ! also need to set sides on adjoining quadrangle cells also 
+            edge_dist(edge_x(i,qnode_3,:)) = i_value
+            edge_dist(edge_x(qnode_2,i,:)) = i_value
+        enddo
+    endif 
 endif 
 
 !bc_dist(edge_x(qnode_2,qnode_3,:)) =  i_value   
