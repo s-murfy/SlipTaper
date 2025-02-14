@@ -205,7 +205,7 @@ do i = 1,amesh%ncells
 
     if (check_cell_quad(slipping_cell,query_cell)) then  ! inside slipping cell 
         if (is_edge_node) then 
-            slip(i) = mean_d/taper_dist+0.35 
+            slip(i) = mean_d/taper_dist+0.4 !+0.35 
         else
             slip(i) = mean_d/taper_dist+0.5
         endif 
@@ -222,7 +222,7 @@ do i = 1,amesh%ncells
     else ! outside slipping cell 
 
         if (is_edge_node) then      
-            slip(i) = -mean_d/taper_dist+0.35
+            slip(i) = -mean_d/taper_dist+0.4   !0.35
         else
              slip(i) = -mean_d/taper_dist+0.5
         endif 

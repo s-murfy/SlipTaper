@@ -305,14 +305,14 @@ full_fault: do k = 1,qmesh%Ncells
 
                   if(.not.bc)  then ! cell is inside subfault 
 
-                     call random_number(num)        ! randomly split of cell
-                     if (num <0.5) then
+                     ! call random_number(num)        ! randomly split of cell
+                     ! if (num <0.5) then
                         amesh%cell(c_count,:)   =   (/ i, i+1, nx+i+1/)
                         amesh%cell(c_count+1,:) =   (/ i, nx+i+1, nx+i/)
-                     else
-                        amesh%cell(c_count,:)   =   (/ nx+i, i, i+1 /)
-                        amesh%cell(c_count+1,:) =   (/ nx+i, i+1, i+1+nx /)
-                     endif
+                     ! else
+                     !    amesh%cell(c_count,:)   =   (/ nx+i, i, i+1 /)
+                     !    amesh%cell(c_count+1,:) =   (/ nx+i, i+1, i+1+nx /)
+                     ! endif
 
                      ! amesh%cell(c_count,:)   =   (/ i, i+1, nx+i+1/)
                      ! amesh%cell(c_count+1,:) =   (/ i, nx+i+1, nx+i/)
@@ -610,11 +610,11 @@ pre_n4 = check_edge(q3,q4,edge_z,tmp,n4) !right edge
 
 cell = 0 
 if ((pre_n1==0).and.(pre_n3==0).and.(pre_n4==0)) then ! all new nodes 
-   ! cell(1,:) = (/ n1, n4, n3/)
-   ! cell(2,:) = (/ n1, n3, n2/)
+   cell(1,:) = (/ n1, n4, n3/)
+   cell(2,:) = (/ n1, n3, n2/)
 
-   cell(1,:) = (/ n2, n1, n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ n2, n4, n3/)
+   ! cell(1,:) = (/ n2, n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ n2, n4, n3/)
 
 ! update both edges 
    id = find_empty_position(edge_z(q3,q4,:))  ! right edge 
@@ -632,11 +632,11 @@ if ((pre_n1==0).and.(pre_n3==0).and.(pre_n4==0)) then ! all new nodes
    edge_x(q1,q4,id+1) = n4
 
 elseif ((pre_n1==0).and.(pre_n3/=0).and.(pre_n4/=0)) then ! right side already logged 
-   ! cell(1,:) = (/ n1, pre_n4, pre_n3/)
-   ! cell(2,:) = (/ n1, pre_n3, n2/)
+   cell(1,:) = (/ n1, pre_n4, pre_n3/)
+   cell(2,:) = (/ n1, pre_n3, n2/)
 
-   cell(1,:) = (/ n2, n1, pre_n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ n2, pre_n4, pre_n3/)
+   ! cell(1,:) = (/ n2, n1, pre_n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ n2, pre_n4, pre_n3/)
 
 
    !add nodes to bottom edge 
@@ -650,11 +650,11 @@ elseif ((pre_n1==0).and.(pre_n3/=0).and.(pre_n4/=0)) then ! right side already l
       edge_x(q1,q4,id+1) = n4
    endif 
 elseif ((pre_n1 /= 0).and.(pre_n3 == 0).and.(pre_n4 ==0)) then ! bottom already exists 
-   ! cell(1,:) = (/ pre_n1, n4, n3/)
-   ! cell(2,:) = (/ pre_n1, n3, n2/)
+   cell(1,:) = (/ pre_n1, n4, n3/)
+   cell(2,:) = (/ pre_n1, n3, n2/)
 
-   cell(1,:) = (/ n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ n2, n4, n3/)
+   ! cell(1,:) = (/ n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ n2, n4, n3/)
 
 !add nodes to the right edge
    id = find_empty_position(edge_z(q3,q4,:))  ! right edge 
@@ -672,11 +672,11 @@ elseif ((pre_n1 /= 0).and.(pre_n3 == 0).and.(pre_n4 ==0)) then ! bottom already 
    endif 
 
 elseif ((pre_n1==0).and.(pre_n3==0).and.(pre_n4 /= 0)) then ! bottom right corner pre-exists 
-   ! cell(1,:) = (/ n1, pre_n4, n3/)
-   ! cell(2,:) = (/ n1, n3, n2/)
+   cell(1,:) = (/ n1, pre_n4, n3/)
+   cell(2,:) = (/ n1, n3, n2/)
 
-   cell(1,:) = (/ n2, n1, pre_n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ n2, pre_n4, n3/)
+   ! cell(1,:) = (/ n2, n1, pre_n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ n2, pre_n4, n3/)
 
 
    id = find_empty_position(edge_z(q3,q4,:))  ! right edge 
@@ -684,11 +684,11 @@ elseif ((pre_n1==0).and.(pre_n3==0).and.(pre_n4 /= 0)) then ! bottom right corne
    edge_z(q4,q3,id) = n4
 
 elseif ((pre_n1 /= 0).and.(pre_n3/=0).and.(pre_n4 /=0)) then ! all sides defined    
-   ! cell(1,:) = (/ pre_n1, pre_n4, pre_n3/)
-   ! cell(2,:) = (/ pre_n1, pre_n3, n2/)   
+   cell(1,:) = (/ pre_n1, pre_n4, pre_n3/)
+   cell(2,:) = (/ pre_n1, pre_n3, n2/)   
 
-   cell(1,:) = (/ n2, pre_n1, pre_n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ n2, pre_n4, pre_n3/)
+   ! cell(1,:) = (/ n2, pre_n1, pre_n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ n2, pre_n4, pre_n3/)
 
 
 endif
@@ -735,11 +735,11 @@ pre_n2_top = check_edge(q2,q3,edge_x,tmp,n2) ! top edge
 
 cell = 0
 if ((pre_n1==0).and.(pre_n2==0).and.(pre_n3==0)) then ! all new nodes 
-   ! cell(1,:) = (/ n1, n4, n3/)
-   ! cell(2,:) = (/ n1, n3, n2/)
+   cell(1,:) = (/ n1, n4, n3/)
+   cell(2,:) = (/ n1, n3, n2/)
 
-   cell(1,:) = (/ n2, n1, n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ n2, n4, n3/)
+   ! cell(1,:) = (/ n2, n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ n2, n4, n3/)
 
 ! update both edge 
    id = find_empty_position(edge_z(q1,q2,:))  ! left edge 
@@ -758,11 +758,11 @@ if ((pre_n1==0).and.(pre_n2==0).and.(pre_n3==0)) then ! all new nodes
 
 
 elseif ((pre_n1/=0).and.(pre_n2/=0).and.(pre_n3==0)) then ! left side already exists 
-   ! cell(1,:) = (/ pre_n1, n4, n3/)
-   ! cell(2,:) = (/ pre_n1, n3, pre_n2/)
+   cell(1,:) = (/ pre_n1, n4, n3/)
+   cell(2,:) = (/ pre_n1, n3, pre_n2/)
 
-   cell(1,:) = (/ pre_n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ pre_n2, n4, n3/)
+   ! cell(1,:) = (/ pre_n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ pre_n2, n4, n3/)
 
    id = find_empty_position(edge_x(q2,q3,:))   ! update top edge 
    edge_x(q2,q3,id) = n2 ! we haven't checked this value but if n1 is not in the list then neither should n3
@@ -772,11 +772,11 @@ elseif ((pre_n1/=0).and.(pre_n2/=0).and.(pre_n3==0)) then ! left side already ex
    edge_x(q3,q2,id+1) = n3
 
 elseif ((pre_n1 == 0).and.(pre_n2 /= 0).and.(pre_n3 /=0)) then ! top already exists 
-   ! cell(1,:) = (/ n1, n4, pre_n3/)
-   ! cell(2,:) = (/ n1, pre_n3, pre_n2/)
+   cell(1,:) = (/ n1, n4, pre_n3/)
+   cell(2,:) = (/ n1, pre_n3, pre_n2/)
 
-   cell(1,:) = (/ pre_n2, n1, n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ pre_n2, n4, pre_n3/)
+   ! cell(1,:) = (/ pre_n2, n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ pre_n2, n4, pre_n3/)
 
 
 ! update both edge 
@@ -789,11 +789,11 @@ elseif ((pre_n1 == 0).and.(pre_n2 /= 0).and.(pre_n3 /=0)) then ! top already exi
 
 
 elseif ((pre_n1 ==0).and.(pre_n2/=0).and.(pre_n3 ==0)) then ! top corner pre-exists 
-   ! cell(1,:) = (/ n1, n4, n3/)
-   ! cell(2,:) = (/ n1, n3, pre_n2/)
+   cell(1,:) = (/ n1, n4, n3/)
+   cell(2,:) = (/ n1, n3, pre_n2/)
 
-   cell(1,:) = (/ pre_n2, n1, n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ pre_n2, n4, n3/)
+   ! cell(1,:) = (/ pre_n2, n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ pre_n2, n4, n3/)
 
    id = find_empty_position(edge_z(q1,q2,:))  ! left edge 
    edge_z(q1,q2,id) = n1
@@ -804,18 +804,18 @@ elseif ((pre_n1 ==0).and.(pre_n2/=0).and.(pre_n3 ==0)) then ! top corner pre-exi
    edge_x(q3,q2,id) = n3
 
 elseif((pre_n1 /=0).and.(pre_n2/=0).and.(pre_n3 /=0)) then ! all sides already defined  
-   ! cell(1,:) = (/ pre_n1, n4, pre_n3/)
-   ! cell(2,:) = (/ pre_n1, pre_n3, pre_n2/)   
+   cell(1,:) = (/ pre_n1, n4, pre_n3/)
+   cell(2,:) = (/ pre_n1, pre_n3, pre_n2/)   
 
-   cell(1,:) = (/ pre_n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ pre_n2, n4, pre_n3/)
+   ! cell(1,:) = (/ pre_n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ pre_n2, n4, pre_n3/)
 
 elseif((pre_n1 /=0).and.(pre_n2==0).and.(pre_n3 ==0)) then ! left bottom point pre-exists 
-   ! cell(1,:) = (/ pre_n1, n4, n3/)
-   ! cell(2,:) = (/ pre_n1, n3, n2/)
+   cell(1,:) = (/ pre_n1, n4, n3/)
+   cell(2,:) = (/ pre_n1, n3, n2/)
 
-   cell(1,:) = (/ n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ n2, n4, n3/)
+   ! cell(1,:) = (/ n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ n2, n4, n3/)
 
 
 ! update both edge 
@@ -832,11 +832,11 @@ elseif((pre_n1 /=0).and.(pre_n2==0).and.(pre_n3 ==0)) then ! left bottom point p
 
 
 elseif((pre_n1 ==0).and.(pre_n2==0).and.(pre_n3 /=0)) then ! top right point pre-exists 
-   ! cell(1,:) = (/ n1, n4, pre_n3/)
-   ! cell(2,:) = (/ n1, pre_n3, n2/)
+   cell(1,:) = (/ n1, n4, pre_n3/)
+   cell(2,:) = (/ n1, pre_n3, n2/)
 
-   cell(1,:) = (/ n2, n1, n4/)  !use this orientation so that slipping area can be defined correctly
-   cell(2,:) = (/ n2, n4, pre_n3/)
+   ! cell(1,:) = (/ n2, n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ n2, n4, pre_n3/)
 
 
    id = find_empty_position(edge_x(q2,q3,:))   ! top edge 
@@ -859,21 +859,21 @@ elseif((pre_n1 ==0).and.(pre_n2==0).and.(pre_n3 /=0)) then ! top right point pre
 elseif((pre_n1 /=0).and.(pre_n2==0).and.(pre_n3 /=0)) then ! corner point not defined pre-exists 
 
    if (pre_n2_top /= 0) then ! check if other edge has a node 
-   !   cell(1,:) = (/ pre_n1, n4, pre_n3/)
-   !   cell(2,:) = (/ pre_n1, pre_n3, pre_n2_top/)  
+     cell(1,:) = (/ pre_n1, n4, pre_n3/)
+     cell(2,:) = (/ pre_n1, pre_n3, pre_n2_top/)  
 
-     cell(1,:) = (/ pre_n2_top, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
-     cell(2,:) = (/ pre_n2_top, n4, pre_n3/)
+   !   cell(1,:) = (/ pre_n2_top, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   !   cell(2,:) = (/ pre_n2_top, n4, pre_n3/)
 
       id = find_empty_position(edge_z(q1,q2,:))  ! left edge, assume we don't need to update top edge as pre_n3 is present
       edge_z(q1,q2,id) = pre_n2_top
       edge_z(q2,q1,id) = pre_n2_top
    else 
-   !   cell(1,:) = (/ pre_n1, n4, pre_n3/)
-   !   cell(2,:) = (/ pre_n1, pre_n3, n2/)  
+     cell(1,:) = (/ pre_n1, n4, pre_n3/)
+     cell(2,:) = (/ pre_n1, pre_n3, n2/)  
 
-     cell(1,:) = (/ n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
-     cell(2,:) = (/ n2, n4, pre_n3/)
+   !   cell(1,:) = (/ n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   !   cell(2,:) = (/ n2, n4, pre_n3/)
 
       id = find_empty_position(edge_z(q1,q2,:))  ! left edge, assume we don't need to update top edge as pre_n3 is present
       edge_z(q1,q2,id) = n2
@@ -1070,14 +1070,14 @@ if ((pre_n1==0).and.(pre_n4==0)) then ! all new nodes
    ! cell(1,:) = (/ n1, n4, n3/)
    ! cell(2,:) = (/ n1, n3, n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ n1, n4, n3/)
       cell(2,:) = (/ n1, n3, n2/)
-   else
-      cell(1,:) = (/ n2, n1, n4/)
-      cell(2,:) = (/ n2, n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, n1, n4/)
+   !    cell(2,:) = (/ n2, n4, n3/)
+   ! endif
 
    id = find_empty_position(edge(q1,q4,:))
    edge(q4,q1,id) = n1
@@ -1090,28 +1090,28 @@ elseif ((pre_n1 /=0).and.(pre_n4 /=0)) then !both nodes are already logged
    ! cell(1,:) = (/ pre_n1, pre_n4, n3/)
    ! cell(2,:) = (/ pre_n1, n3, n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ pre_n1, pre_n4, n3/)
       cell(2,:) = (/ pre_n1, n3, n2/)
-   else
-      cell(1,:) = (/ n2, pre_n1, pre_n4/)
-      cell(2,:) = (/ n2, pre_n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, pre_n1, pre_n4/)
+   !    cell(2,:) = (/ n2, pre_n4, n3/)
+   ! endif
 
 
 elseif ((pre_n1 /=0).and.(pre_n4 ==0)) then ! nodes at n1 is already logged
    ! cell(1,:) = (/ pre_n1, n4, n3/)
    ! cell(2,:) = (/ pre_n1, n3, n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ pre_n1, n4, n3/)
       cell(2,:) = (/ pre_n1, n3, n2/)
-   else
-      cell(1,:) = (/ n2, pre_n1, n4/)
-      cell(2,:) = (/ n2, n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, pre_n1, n4/)
+   !    cell(2,:) = (/ n2, n4, n3/)
+   ! endif
 
    id = find_empty_position(edge(q1,q4,:))  
    edge(q4,q1,id) = n4
@@ -1121,14 +1121,14 @@ elseif ((pre_n1 == 0).and.(pre_n4 /=0)) then !nodes at np is already logged
    ! cell(1,:) = (/ n1, pre_n4, n3/)
    ! cell(2,:) = (/ n1, n3, n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ n1, pre_n4, n3/)
       cell(2,:) = (/ n1, n3, n2/)
-   else
-      cell(1,:) = (/ n2, n1, pre_n4/)
-      cell(2,:) = (/ n2, pre_n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, n1, pre_n4/)
+   !    cell(2,:) = (/ n2, pre_n4, n3/)
+   ! endif
 
    id = find_empty_position(edge(q1,q4,:))
    edge(q4,q1,id) = n1
@@ -1165,14 +1165,14 @@ if ((pre_n2==0).and.(pre_n3==0)) then ! all new nodes
    ! cell(1,:) = (/ n1, n4, n3/)
    ! cell(2,:) = (/ n1, n3, n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ n1, n4, n3/)
       cell(2,:) = (/ n1, n3, n2/)
-   else
-      cell(1,:) = (/ n2, n1, n4/)
-      cell(2,:) = (/ n2, n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, n1, n4/)
+   !    cell(2,:) = (/ n2, n4, n3/)
+   ! endif
 
 
 ! add all nodes to edge 
@@ -1187,27 +1187,27 @@ elseif ((pre_n2/=0).and.(pre_n3/=0)) then!both nodes are already logged
    ! cell(1,:) = (/ n1, n4, pre_n3/)
    ! cell(2,:) = (/ n1, pre_n3, pre_n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ n1, n4, pre_n3/)
       cell(2,:) = (/ n1, pre_n3, pre_n2/)
-   else
-      cell(1,:) = (/ pre_n2, n1, n4/)
-      cell(2,:) = (/ pre_n2, n4, pre_n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ pre_n2, n1, n4/)
+   !    cell(2,:) = (/ pre_n2, n4, pre_n3/)
+   ! endif
 
 
 elseif ((pre_n2 /=0).and.(pre_n3 == 0)) then ! nodes at n2 is already logged
    ! cell(1,:) = (/ n1, n4, n3/)
    ! cell(2,:) = (/ n1, n3, pre_n2/)
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ n1, n4, n3/)
       cell(2,:) = (/ n1, n3, pre_n2/)
-   else
-      cell(1,:) = (/ pre_n2, n1, n4/)
-      cell(2,:) = (/ pre_n2, n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ pre_n2, n1, n4/)
+   !    cell(2,:) = (/ pre_n2, n4, n3/)
+   ! endif
 
 
    id = find_empty_position(edge(q2,q3,:))
@@ -1218,14 +1218,14 @@ elseif ((pre_n2 == 0).and.(pre_n3 /=0)) then !nodes at n3 is already logged
    ! cell(1,:) = (/ n1, n4, pre_n3/)
    ! cell(2,:) = (/ n1, pre_n3, n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ n1, n4, pre_n3/)
       cell(2,:) = (/ n1, pre_n3, n2/)
-   else
-      cell(1,:) = (/ n2, n1, n4/)
-      cell(2,:) = (/ n2, n4, pre_n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, n1, n4/)
+   !    cell(2,:) = (/ n2, n4, pre_n3/)
+   ! endif
 
    id = find_empty_position(edge(q2,q3,:))
    edge(q2,q3,id) = n2
@@ -1260,14 +1260,14 @@ if ((pre_n1==0).and.(pre_n2==0)) then ! all new nodes
    ! cell(1,:) = (/ n1, n4, n3/)
    ! cell(2,:) = (/ n1, n3, n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ n1, n4, n3/)
       cell(2,:) = (/ n1, n3, n2/)
-   else
-      cell(1,:) = (/ n2, n1, n4/)
-      cell(2,:) = (/ n2, n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, n1, n4/)
+   !    cell(2,:) = (/ n2, n4, n3/)
+   ! endif
 
 ! add all nodes to edge 
    id = find_empty_position(edge(q1,q2,:))
@@ -1281,28 +1281,28 @@ elseif ((pre_n1/=0).and.(pre_n2/=0)) then!both nodes are already logged
    ! cell(1,:) = (/ pre_n1, n4, n3/)
    ! cell(2,:) = (/ pre_n1, n3, pre_n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ pre_n1, n4, n3/)
       cell(2,:) = (/ pre_n1, n3, pre_n2/)
-   else
-      cell(1,:) = (/ pre_n2, pre_n1, n4/)
-      cell(2,:) = (/ pre_n2, n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ pre_n2, pre_n1, n4/)
+   !    cell(2,:) = (/ pre_n2, n4, n3/)
+   ! endif
 
 
 elseif ((pre_n1 /=0).and.(pre_n2 == 0)) then ! node at n1 is already logged
    ! cell(1,:) = (/ pre_n1, n4, n3/)
    ! cell(2,:) = (/ pre_n1, n3, n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ pre_n1, n4, n3/)
       cell(2,:) = (/ pre_n1, n3, n2/)
-   else
-      cell(1,:) = (/ n2, pre_n1, n4/)
-      cell(2,:) = (/ n2, n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, pre_n1, n4/)
+   !    cell(2,:) = (/ n2, n4, n3/)
+   ! endif
 
    id = find_empty_position(edge(q1,q2,:))
    edge(q1,q2,id) = n2
@@ -1312,14 +1312,14 @@ elseif ((pre_n1 == 0).and.(pre_n2 /=0)) then !nodes at n2 is already logged
    ! cell(1,:) = (/ n1, n4, n3/)
    ! cell(2,:) = (/ n1, n3, pre_n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ n1, n4, n3/)
       cell(2,:) = (/ n1, n3, pre_n2/)
-   else
-      cell(1,:) = (/ pre_n2, n1, n4/)
-      cell(2,:) = (/ pre_n2, n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ pre_n2, n1, n4/)
+   !    cell(2,:) = (/ pre_n2, n4, n3/)
+   ! endif
 
    id = find_empty_position(edge(q1,q2,:))
    edge(q1,q2,id) = n1
@@ -1354,14 +1354,14 @@ cell = 0
 if ((pre_n3==0).and.(pre_n4==0)) then ! all new nodes 
    ! cell(1,:) = (/ n1, n4, n3/)
    ! cell(2,:) = (/ n1, n3, n2/)
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ n1, n4, n3/)
       cell(2,:) = (/ n1, n3, n2/)
-   else
-      cell(1,:) = (/ n2, n1, n4/)
-      cell(2,:) = (/ n2, n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, n1, n4/)
+   !    cell(2,:) = (/ n2, n4, n3/)
+   ! endif
 
 ! add all nodes to edge 
    id = find_empty_position(edge(q3,q4,:))
@@ -1376,28 +1376,28 @@ elseif ((pre_n3/=0).and.(pre_n4/=0)) then!both nodes are already logged
 !   cell(1,:) = (/ n1, pre_n4, pre_n3/)
 !   cell(2,:) = (/ n1, pre_n3, n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
    cell(1,:) = (/ n1, pre_n4, pre_n3/)
    cell(2,:) = (/ n1, pre_n3, n2/)
-   else
-      cell(1,:) = (/ n2, n1, pre_n4/)
-      cell(2,:) = (/ n2, pre_n4, pre_n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, n1, pre_n4/)
+   !    cell(2,:) = (/ n2, pre_n4, pre_n3/)
+   ! endif
 
 
 elseif ((pre_n3 /=0).and.(pre_n4 == 0)) then ! node at n3 is already logged
    ! cell(1,:) = (/ n1, n4, pre_n3/)
    ! cell(2,:) = (/ n1, pre_n3, n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ n1, n4, pre_n3/)
       cell(2,:) = (/ n1, pre_n3, n2/)
-   else
-      cell(1,:) = (/ n2, n1, n4/)
-      cell(2,:) = (/ n2, n4, pre_n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, n1, n4/)
+   !    cell(2,:) = (/ n2, n4, pre_n3/)
+   ! endif
 
    id = find_empty_position(edge(q3,q4,:))
    edge(q3,q4,id) = n4
@@ -1407,14 +1407,14 @@ elseif ((pre_n3 == 0).and.(pre_n4 /=0)) then !nodes at n4 is already logged
    ! cell(1,:) = (/ n1, pre_n4, n3/)
    ! cell(2,:) = (/ n1, n3, n2/)
 
-   call random_number(num)        ! randomly split of cell
-   if (num <0.5) then
+   ! call random_number(num)        ! randomly split of cell
+   ! if (num <0.5) then
       cell(1,:) = (/ n1, pre_n4, n3/)
       cell(2,:) = (/ n1, n3, n2/)
-   else
-      cell(1,:) = (/ n2, n1, pre_n4/)
-      cell(2,:) = (/ n2, pre_n4, n3/)
-   endif
+   ! else
+   !    cell(1,:) = (/ n2, n1, pre_n4/)
+   !    cell(2,:) = (/ n2, pre_n4, n3/)
+   ! endif
    
    id = find_empty_position(edge(q3,q4,:))
    edge(q3,q4,id) = n3
