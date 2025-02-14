@@ -157,9 +157,10 @@ real(pr), allocatable, dimension(:),intent(out) :: slip
 real(pr) :: d1,d2,d3,mean_d
 real(pr),intent(in) :: taper_dist
 integer:: qnode_1,qnode_2,qnode_3,qnode_4
-integer :: istart,iend,i,j,nz
-logical :: inside,edge_exist
+integer :: istart,iend,i,j,nz,nx
+logical :: inside,edge_exist,is_edge_node
 real(pr) :: slip_edge
+real(pr) :: c1,c2,c3,c4 
 ! real(pr),parameter :: kilo = 1000._pr 
 
 qnode_1 = qmesh%cell(slipping_cell,1)
@@ -169,11 +170,15 @@ qnode_4 = qmesh%cell(slipping_cell,4)
 
 !taper_dist = 25._pr*kilo
 
-nz = size(edge_z,3)
-istart = edge_z(qnode_1,qnode_2,1)
-iend = edge_z(qnode_3,qnode_4,nz)
+! nz = size(edge_z,3)
+! istart = edge_z(qnode_1,qnode_2,1)
+! iend = edge_z(qnode_3,qnode_4,nz)
 ! write(*,*) 'node range....',istart,iend
-
+nx = size(edge_x,3)
+c1 = edge_x(qnode_1,qnode_4,1) 
+c2 = edge_x(qnode_2,qnode_3,nx)
+c3 = edge_x(qnode_2,qnode_3,1)
+c4 = edge_x(qnode_1,qnode_4,nx)
 allocate(slip(amesh%Ncells))
 slip = 0._pr
 
@@ -196,10 +201,16 @@ do i = 1,amesh%ncells
     mean_d = (d1+d2+d3)/3._pr
     slip_edge =1._pr
 
-    if (check_cell_quad(slipping_cell,query_cell)) then  ! inside slipping cell 
-        slip(i) = mean_d/taper_dist+0.5
+    is_edge_node = check_edge_node(amesh%cell(i,:),c1,c2,c3,c4) ! check if cell has a node on the edge 
 
-        if (edge_exist) then 
+    if (check_cell_quad(slipping_cell,query_cell)) then  ! inside slipping cell 
+        if (is_edge_node) then 
+            slip(i) = mean_d/taper_dist+0.35 
+        else
+            slip(i) = mean_d/taper_dist+0.5
+        endif 
+
+        if (edge_exist) then ! case when on the edge of larger mesh
             d1 = edge_dist(amesh%cell(i,1))
             d2 = edge_dist(amesh%cell(i,2))
             d3 = edge_dist(amesh%cell(i,3))
@@ -209,9 +220,14 @@ do i = 1,amesh%ncells
         slip(i) = min(slip(i),slip_edge)
         ! if (slip(i) > 1._pr) slip(i) = 1._pr 
     else ! outside slipping cell 
-        slip(i) = -mean_d/taper_dist+0.5
 
-        if (edge_exist) then 
+        if (is_edge_node) then      
+            slip(i) = -mean_d/taper_dist+0.35
+        else
+             slip(i) = -mean_d/taper_dist+0.5
+        endif 
+
+        if (edge_exist) then ! case when on the edge of larger mesh
             d1 = edge_dist(amesh%cell(i,1))
             d2 = edge_dist(amesh%cell(i,2))
             d3 = edge_dist(amesh%cell(i,3))
@@ -232,6 +248,19 @@ enddo
 
 return
 end subroutine add_slip
+! !====================================================================
+function check_edge_node(nodes,c1,c2,c3,c4) result(is_edge_node)
+integer,dimension(3),intent(in) :: nodes
+real(pr),intent(in) :: c1,c2,c3,c4
+logical :: is_edge_node
+
+is_edge_node = .false.
+if (any(nodes == c1).or.any(nodes == c2).or.any(nodes == c3).or.any(nodes == c4)) then 
+    is_edge_node = .true.
+endif
+
+return
+end function check_edge_node
 ! !====================================================================
 function check_cell_quad(slipping_cell,query_cell)    result(match)
 integer,intent(in) :: slipping_cell

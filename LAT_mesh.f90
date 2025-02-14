@@ -869,8 +869,8 @@ elseif((pre_n1 /=0).and.(pre_n2==0).and.(pre_n3 /=0)) then ! corner point not de
       edge_z(q1,q2,id) = pre_n2_top
       edge_z(q2,q1,id) = pre_n2_top
    else 
-     cell(1,:) = (/ pre_n1, n4, pre_n3/)
-     cell(2,:) = (/ pre_n1, pre_n3, n2/)  
+   !   cell(1,:) = (/ pre_n1, n4, pre_n3/)
+   !   cell(2,:) = (/ pre_n1, pre_n3, n2/)  
 
      cell(1,:) = (/ n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
      cell(2,:) = (/ n2, n4, pre_n3/)
