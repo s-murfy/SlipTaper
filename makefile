@@ -8,9 +8,9 @@ OBJ = generic.o georef.o LAT_mesh.o lists.o distance.o io.o slip.o main.o
 
 # debugging options 
 #
-# FCFLAGS = -O -g -fbounds-check -ffpe-trap=invalid -fcheck=all -fbacktrace
+FCFLAGS = -O -g -fbounds-check -ffpe-trap=invalid -fcheck=all -fbacktrace
 # FCFLAGS = -O -g -traceback -implicitnone #-check all 
-FCFLAGS = -O2 
+# FCFLAGS = -O2 
 
 .SUFFIXES: .f90
 

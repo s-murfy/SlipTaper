@@ -6,17 +6,17 @@ implicit none
 contains
 
 !====================================================================
-subroutine boundary_dist(slipping_cell,qmesh,amesh,edge_x,edge_z,surface,bc_dist,edge_dist,edge_exist)
+subroutine boundary_dist(slipping_cell,qmesh,amesh,edge_x,edge_z,surface,bc_dist,edge_dist,corner_dist,edge_exist)
 use distance
 integer,allocatable,dimension(:,:,:),intent(in) :: edge_x,edge_z
 type(mesh),intent(in) :: qmesh,amesh
-real(pr),allocatable,dimension(:) :: bc_dist,edge_dist
+real(pr),allocatable,dimension(:) :: bc_dist,edge_dist,corner_dist
 real(pr),intent(in) :: surface
 real(pr) :: i_value
 integer,intent(in) :: slipping_cell
 integer :: qnode_1,qnode_2,qnode_3,qnode_4
 logical :: fast ,not_surface
-integer :: i
+integer :: i,nx,nz
 logical :: edge_12,edge_34,edge_14,edge_23,edge_exist
 
 
@@ -118,10 +118,39 @@ call onevsall2d(amesh,bc_dist,fast)
 bc_dist = bc_dist-i_value  !remove large number to get actual distance
 
 if (edge_exist) then 
-    write(*,*) 'edge exist and distance from boundary being calculated'
+    ! write(*,*) 'edge exist and distance from boundary being calculated'
     call onevsall2d(amesh,edge_dist,fast)
     edge_dist = edge_dist-i_value 
 endif 
+
+allocate(corner_dist(amesh%Nnodes))
+corner_dist = infinity
+nx = size(edge_x,3)
+nz = size(edge_z,3)
+
+
+! set just the point in the corner to zero 
+! corner_dist(edge_x(qnode_1,qnode_4,1)) = i_value 
+! corner_dist(edge_x(qnode_1,qnode_4,nx)) = i_value
+! corner_dist(edge_x(qnode_2,qnode_3,1)) = i_value 
+! corner_dist(edge_x(qnode_2,qnode_3,nx)) = i_value
+
+
+! set the 3 points in the corner to zero
+corner_dist(edge_x(qnode_1,qnode_4,1:2)) = i_value 
+corner_dist(edge_x(qnode_1,qnode_4,nx-1:nx)) = i_value
+corner_dist(edge_x(qnode_2,qnode_3,1:2)) = i_value 
+corner_dist(edge_x(qnode_2,qnode_3,nx-1:nx)) = i_value 
+
+corner_dist(edge_z(qnode_3,qnode_4,1:2)) = i_value  !0._pr
+corner_dist(edge_z(qnode_3,qnode_4,nz-1:nz)) = i_value !0._pr
+corner_dist(edge_z(qnode_1,qnode_2,1:2)) = i_value  !0._pr
+corner_dist(edge_z(qnode_1,qnode_2,nz-1:nz)) = i_value !0._pr
+
+call onevsall2d(amesh,corner_dist,fast)
+corner_dist = corner_dist-i_value 
+
+
 
 return 
 end subroutine boundary_dist
@@ -146,21 +175,23 @@ enddo
 return
 end function interior_edge
 !====================================================================
-subroutine add_slip(slipping_cell,qmesh,amesh,edge_x,edge_z,tri2quad,bc_dist,edge_dist,edge_exist,taper_dist,slip)
+subroutine add_slip(slipping_cell,qmesh,amesh,edge_x,edge_z,tri2quad,bc_dist,edge_dist,corner_dist,edge_exist,taper_dist,slip)
 type(mesh),intent(in) :: qmesh,amesh
 integer,dimension(:,:,:),intent(in) :: edge_x,edge_z
-real(pr), dimension(:),intent(in) :: bc_dist,edge_dist
+real(pr), dimension(:),intent(in) :: bc_dist,edge_dist,corner_dist
 integer, dimension(:),intent(in) :: tri2quad
 integer,intent(in) :: slipping_cell
 integer,dimension(3) :: query_cell
 real(pr), allocatable, dimension(:),intent(out) :: slip 
-real(pr) :: d1,d2,d3,mean_d
+real(pr) :: d1,d2,d3,mean_d,edge_d,bary_x,bary_y
 real(pr),intent(in) :: taper_dist
 integer:: qnode_1,qnode_2,qnode_3,qnode_4
+integer,dimension(3) :: query_nodes
 integer :: istart,iend,i,j,nz,nx
 logical :: inside,edge_exist,is_edge_node
+real(pr),dimension(4) :: quad_x,quad_y
 real(pr) :: slip_edge
-real(pr) :: c1,c2,c3,c4 
+real(pr) :: c1,c2,c3,c4,dx
 ! real(pr),parameter :: kilo = 1000._pr 
 
 qnode_1 = qmesh%cell(slipping_cell,1)
@@ -168,7 +199,8 @@ qnode_2 = qmesh%cell(slipping_cell,2)
 qnode_3 = qmesh%cell(slipping_cell,3)
 qnode_4 = qmesh%cell(slipping_cell,4)
 
-!taper_dist = 25._pr*kilo
+quad_x = (/ qmesh%px(qnode_1),qmesh%px(qnode_2),qmesh%px(qnode_3),qmesh%px(qnode_4)  /)
+quad_y = (/ qmesh%py(qnode_1),qmesh%py(qnode_2),qmesh%py(qnode_3),qmesh%py(qnode_4) /)
 
 ! nz = size(edge_z,3)
 ! istart = edge_z(qnode_1,qnode_2,1)
@@ -190,22 +222,44 @@ slip = 0._pr
 !         slip(i) = 1._pr 
 !     endif 
 ! enddo 
+! estimate the lenght of a cell 
+dx = max(abs(bc_dist(amesh%cell(1,1))-bc_dist(amesh%cell(1,2))),      &
+         abs(bc_dist(amesh%cell(1,1))-bc_dist(amesh%cell(1,3))),      &
+         abs(bc_dist(amesh%cell(1,2))-bc_dist(amesh%cell(1,3)))  )
 
 ! apply tapered slip 
 do i = 1,amesh%ncells
-    inside = .true. 
+
+    bary_x = (amesh%px(amesh%cell(i,1))+amesh%px(amesh%cell(i,2))+amesh%px(amesh%cell(i,3)))/3._pr
+    bary_y = (amesh%py(amesh%cell(i,1))+amesh%py(amesh%cell(i,2))+amesh%py(amesh%cell(i,3)))/3._pr
+
+    ! inside = .true.
+    inside = pt_inside_quad(bary_x,bary_y,quad_x,quad_y)   ! check if cell is inside the slipping quadrangle
+
     query_cell = tri2quad(amesh%cell(i,1:3)) 
     d1 = bc_dist(amesh%cell(i,1))
     d2 = bc_dist(amesh%cell(i,2))
     d3 = bc_dist(amesh%cell(i,3))
     mean_d = (d1+d2+d3)/3._pr
-    slip_edge =1._pr
+    slip_edge = 0._pr
 
-    is_edge_node = check_edge_node(amesh%cell(i,:),c1,c2,c3,c4) ! check if cell has a node on the edge 
 
-    if (check_cell_quad(slipping_cell,query_cell)) then  ! inside slipping cell 
-        if (is_edge_node) then 
-            slip(i) = mean_d/taper_dist+0.4 !+0.35 
+    d1 = corner_dist(amesh%cell(i,1))
+    d2 = corner_dist(amesh%cell(i,2))
+    d3 = corner_dist(amesh%cell(i,3))
+    edge_d = (d1+d2+d3)/3._pr
+
+    
+    query_nodes = amesh%cell(i,:)
+    is_edge_node = check_edge_node(query_nodes,c1,c2,c3,c4) ! check if cell has a node on the edge 
+
+    if (inside) then  ! inside slipping cell 
+
+    ! if (check_cell_quad(slipping_cell,query_cell)) then  ! inside slipping cell 
+        ! if (is_edge_node) then 
+        if (edge_d <= dx) then   ! apply a different taper condition for edges
+        ! if (edge_d <= taper_dist*0.25) then
+            slip(i) = edge_d/taper_dist+0.25 !
         else
             slip(i) = mean_d/taper_dist+0.5
         endif 
@@ -215,31 +269,32 @@ do i = 1,amesh%ncells
             d2 = edge_dist(amesh%cell(i,2))
             d3 = edge_dist(amesh%cell(i,3))
             mean_d = (d1+d2+d3)/3._pr
-            slip_edge = mean_d/(taper_dist*1.)+0.1
+            slip_edge = edge_d/taper_dist+0.1
         endif 
-        slip(i) = min(slip(i),slip_edge)
-        ! if (slip(i) > 1._pr) slip(i) = 1._pr 
+        slip(i) = max(slip(i),slip_edge)
+
     else ! outside slipping cell 
 
-        if (is_edge_node) then      
-            slip(i) = -mean_d/taper_dist+0.4   !0.35
+        ! if (is_edge_node) then      
+        if (edge_d <= dx) then     ! apply a different taper condition for edges
+        ! if (edge_d <= taper_dist*0.25) then
+            slip(i) = -edge_d/taper_dist+0.25   !0.35
         else
              slip(i) = -mean_d/taper_dist+0.5
         endif 
-
+        ! slip(i) = 0._pr
         if (edge_exist) then ! case when on the edge of larger mesh
             d1 = edge_dist(amesh%cell(i,1))
             d2 = edge_dist(amesh%cell(i,2))
             d3 = edge_dist(amesh%cell(i,3))
             mean_d = (d1+d2+d3)/3._pr
-            slip_edge = mean_d/(taper_dist*1.)+0.1
+            slip_edge = -edge_d/taper_dist+0.1
         endif 
-        slip(i) = min(slip(i),slip_edge)
-
+        slip(i) = max(slip(i),slip_edge)
 
     endif 
-    if (slip(i) > 1._pr) slip(i) = 1._pr 
 
+    if (slip(i) > 1._pr) slip(i) = 1._pr 
     if (slip(i) < 0._pr) slip(i) = 0._pr 
 
 enddo 
@@ -248,7 +303,47 @@ enddo
 
 return
 end subroutine add_slip
-! !====================================================================
+!====================================================================
+function pt_inside_quad(x,y,quad_x,quad_y) result(inside)
+real(pr),intent(in) :: x,y
+real(pr),dimension(4),intent(in) :: quad_x,quad_y
+logical :: inside
+real(pr) :: x1,x2,y1,y2,x_intersect
+integer :: i,j
+
+inside = .false.
+
+! if ((x+value >= minval(bc_x)).and.(x+value <= maxval(bc_x)).and.       &
+!     (y+value >= minval(bc_y)).and.(y+value <= maxval(bc_y))) then 
+!     inside = .true.
+! endif 
+
+
+
+j = 4  ! Last vertex index (since Fortran arrays start at 1)
+
+do i = 1, 4
+    x1 = quad_x(i)
+    y1 = quad_y(i)
+    x2 = quad_x(j)
+    y2 = quad_y(j)
+
+    ! Check if the point is between the y bounds of the edge
+    if ((y1 > y) .neqv. (y2 > y)) then
+    ! Compute intersection of polygon edge with horizontal ray
+        x_intersect = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+        if (x < x_intersect) then
+            inside = .not. inside
+        end if
+    end if
+    j = i  ! Move to next edge
+end do
+
+
+
+return
+end function pt_inside_quad
+!====================================================================
 function check_edge_node(nodes,c1,c2,c3,c4) result(is_edge_node)
 integer,dimension(3),intent(in) :: nodes
 real(pr),intent(in) :: c1,c2,c3,c4

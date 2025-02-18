@@ -11,7 +11,7 @@
 #   surface_depth : if one of the nodes along the quadrangle edge is above this 
 #                   value it is assumed to be a surface and the taper is not applied 
 #   rake          : slip rake is added to hysea file 
-&CELLCHOICE	cell=260, surface_depth=-100.d0, rake=90.d0/
+&CELLCHOICE	cell=274, surface_depth=-100.d0, rake=90.d0/
 
 # Choose quadrangle cell that slip is centred on
 #
