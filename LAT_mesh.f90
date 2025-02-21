@@ -356,15 +356,6 @@ full_fault: do k = 1,qmesh%Ncells
             write(*,*) 'node not detected in cell',j,k
          endif 
       enddo
-      
-
-      ! if (j==1182) write(*,*) 'cell......',j,amesh%cell(j,:)      
-      ! if (j==219) write(*,*) 'cell......',j,amesh%cell(j,:)      
-
-      ! if (j==999) write(*,*) 'cell......',j,amesh%cell(j,:)      
-      ! if (j==1000) write(*,*) 'cell......',j,amesh%cell(j,:)      
-      ! if (j==401) write(*,*) 'cell......',j,amesh%cell(j,:)      
-      ! if (j==402) write(*,*) 'cell......',j,amesh%cell(j,:)      
 
    enddo
  

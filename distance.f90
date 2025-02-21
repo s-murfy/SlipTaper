@@ -525,6 +525,18 @@ use lists
                   r2=distarray(otherninc(3-i))
                if (verbose) write(*,*) 'r1,r2 : ',r1,r2
                   dface=dcircle(d12,d13,d23,r1,r2)
+               ! if (otherninc(i) == 126) then
+               !    write(*,*) r1,r2,dface
+               !    write(*,*) pmin%idnode,otherninc           
+               ! endif 
+               ! if( (dface > 31000.0).and. (dface < 100000.0)) then 
+               !    write(*,*) 'Im starting to fuck myself'
+               !    write(*,*) r1,r2,dface
+               !    write(*,*) pmin%idnode,otherninc
+               !    sdist = distarray
+               !    return
+               ! endif 
+
                if (verbose) write(*,*) 'dface : ',dface
                else
                   dface=infinity
