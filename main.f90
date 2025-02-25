@@ -12,7 +12,9 @@ real(pr),allocatable,dimension(:,:) :: fault_lon,fault_lat,fault_z
 real(pr),allocatable,dimension(:,:) :: quad_lon,quad_lat,quad_z,quad_x,quad_y
 integer,allocatable,dimension(:,:,:) :: edge_x,edge_z
 integer,allocatable,dimension(:):: tri2quad
-real(pr),allocatable,dimension(:):: bc_dist,edge_dist,corner_dist
+! real(pr),allocatable,dimension(:):: bc_dist,edge_dist,corner_dist
+real(pr),allocatable, dimension(:) :: slipping_dist
+real(pr),allocatable,dimension(:,:):: bc_dist
 real(pr) :: accuracy
 real(pr), dimension(2) :: flenghts,fwidths
 real(pr), allocatable, dimension(:) :: central_dist,slip,rect_slip
@@ -76,13 +78,15 @@ call create_tri_mesh(qmesh,nx,nz,amesh,edge_x,edge_z,tri2quad,output_level)
 
 ! ! calculate distance between all points on mesh
 if (output_level >= 2) write(*,*) 'Calculate border distances '
-call boundary_dist(slipping_cell,qmesh,amesh,edge_x,edge_z,surface,bc_dist,edge_dist,corner_dist,edge_exist)
-
+! call boundary_dist(slipping_cell,qmesh,amesh,edge_x,edge_z,surface,bc_dist,edge_dist,corner_dist,edge_exist)
+call boundary_distV2(qmesh,amesh,edge_x,edge_z,surface,bc_dist)
 
 ! ! calc tapered slip 
 !call tapered_slip(amesh,dist,central_dist,slip)
 if (output_level >= 2) write(*,*) 'calculate slip on fault...'
-call add_slip(slipping_cell,qmesh,amesh,edge_x,edge_z,tri2quad,bc_dist,edge_dist,corner_dist,edge_exist,taper_dist,slip)
+! call add_slip(slipping_cell,qmesh,amesh,edge_x,edge_z,tri2quad,bc_dist,edge_dist,corner_dist,edge_exist,taper_dist,slip)
+call add_slipV2(slipping_cell,qmesh,amesh,edge_x,edge_z,bc_dist,taper_dist,slip)
+
 
 ! ! calculate tapered slip and transform mesh to rectilinear cells 
 ! call tapered_slip_rectangle(amesh,dist,central_dist,rect_mesh,rect_slip)
@@ -90,10 +94,14 @@ call add_slip(slipping_cell,qmesh,amesh,edge_x,edge_z,tri2quad,bc_dist,edge_dist
 ! ! output slip in utm coordinates 
 if (output_level == 2) write(*,*) 'output slip'
 
+allocate(slipping_dist(amesh%Ncells))
+slipping_dist = bc_dist(slipping_cell,:)
 if (output_level >= 1) then 
         write(out_file,'(a15,i3.3)') 'slip_taper_utm_',original_slipping_cell
         ! call write_out(amesh,bc_dist,slip,out_file)     ! writing out distance from boundary 
-        call write_out(amesh,corner_dist,slip,out_file)   ! writing out corner distance 
+        
+
+        call write_out(amesh,slipping_dist,slip,out_file)   ! writing out corner distance 
 
 
 
@@ -113,7 +121,7 @@ call convert2geo(amesh,latref,lonref,geomesh)
 if (output_level >= 2) write(*,*) 'output slip in lat/lon coordinates'
 
 write(out_file,'(a15,i3.3)') 'slip_taper_geo_',original_slipping_cell
-call write_out(geomesh,bc_dist,slip,out_file)
+call write_out(geomesh,slipping_dist,slip,out_file)
 
 
 call hysea_output(geomesh,slip,slip_rake,out_file)

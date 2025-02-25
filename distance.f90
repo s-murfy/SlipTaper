@@ -529,7 +529,7 @@ use lists
                !    write(*,*) r1,r2,dface
                !    write(*,*) pmin%idnode,otherninc           
                ! endif 
-               ! if( (dface > 31000.0).and. (dface < 100000.0)) then 
+               ! if( (dface > 36000.0).and. (dface < 100000.0)) then 
                !    write(*,*) 'Im starting to fuck myself'
                !    write(*,*) r1,r2,dface
                !    write(*,*) pmin%idnode,otherninc

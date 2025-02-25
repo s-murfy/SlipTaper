@@ -1645,6 +1645,36 @@ subroutine dumpmeshvtk_jup_rect(dev,out_mesh)
 
   return
 end subroutine dumpmeshvtk_jup_rect
+! !###############################################################################
+! subroutine write_outV2(out_mesh,bc_dist,slip,out_file)
+!   implicit none
+!   type(mesh),intent(in) :: out_mesh        ! complete mesh  
+!   character(30) :: out_file  ! name of output file
+!   character(34) :: filename  ! name of output file with extension
+!   character (len=20) :: fnamef
+!   real(pr),allocatable,dimension(:,:)  :: bc_dist
+!   real(pr),allocatable,dimension(:,:)  :: single_dist,slip
+!   integer :: i 
+! write(filename,'(a,a)') trim(adjustl(out_file)),'.vtk'
+! open(11,file=trim(adjustl(filename)),form = 'formatted')
+! call dumpmeshvtk_jup(11,out_mesh)  ! changed to this as it is read by meshio (other doesn't recognise POLYDATA)
+! ! save distance from centre of patch 
+! allocate(single_dist(size(bc_dist,2)))
+! do i = 1,size(bc_dist,1)
+!    single_dist = bc_dist(i,:)
+!    if (i==1) then 
+!       call dumpnodeattributevtk(11,out_mesh,single_dist,'BC_Distance',.true.)
+!    elseif 
+!       call dumpnodeattributevtk(11,out_mesh,single_dist,'BC_Distance',.false.)
+
+! enddo 
+! ! save slip on cells 
+! call dumpcellattributevtk(11,out_mesh,slip,'slip',.true.)
+
+! return
+! end subroutine write_outV2
+
+! !###############################################################################
 !###############################################################################
 subroutine write_out(out_mesh,central_dist,slip,out_file)
   implicit none
@@ -1652,7 +1682,7 @@ subroutine write_out(out_mesh,central_dist,slip,out_file)
   character(30) :: out_file  ! name of output file
   character(34) :: filename  ! name of output file with extension
   character (len=20) :: fnamef
-  real(pr), allocatable,dimension(:)  :: central_dist,slip
+  real(pr),allocatable,dimension(:)  :: central_dist,slip
   
 write(filename,'(a,a)') trim(adjustl(out_file)),'.vtk'
 open(11,file=trim(adjustl(filename)),form = 'formatted')

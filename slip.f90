@@ -6,6 +6,55 @@ implicit none
 contains
 
 !====================================================================
+subroutine boundary_distV2(qmesh,amesh,edge_x,edge_z,surface,bc_dist)
+use distance
+integer,allocatable,dimension(:,:,:),intent(in) :: edge_x,edge_z
+type(mesh),intent(in) :: qmesh,amesh
+real(pr),allocatable,dimension(:,:) :: bc_dist
+real(pr),allocatable,dimension(:) :: quad_dist
+
+real(pr),intent(in) :: surface
+real(pr) :: i_value
+integer :: qnode_1,qnode_2,qnode_3,qnode_4
+logical :: fast ,not_surface
+integer :: i,j
+
+
+if (allocated(bc_dist)) deallocate(bc_dist)
+allocate(bc_dist(qmesh%Nnodes,amesh%Nnodes))
+allocate(quad_dist(amesh%Nnodes))
+i_value = 10000000._pr  ! use a large number to generate for the generation of plane wavefront
+fast = .true.
+
+do i = 1,qmesh%Ncells
+    quad_dist = infinity
+    qnode_1 = qmesh%cell(i,1)
+    qnode_2 = qmesh%cell(i,2)
+    qnode_3 = qmesh%cell(i,3)
+    qnode_4 = qmesh%cell(i,4)
+!set sides of quadrangle to zero 
+    quad_dist(edge_z(qnode_1,qnode_2,:)) = i_value
+    quad_dist(edge_z(qnode_3,qnode_4,:)) = i_value
+    quad_dist(edge_x(qnode_1,qnode_4,:)) = i_value
+!only possible edge connected with surface is qnode_2,qnode_3
+! if any node is equal to or above surface leave out of distance calculation meaing taper is not applied
+    not_surface = .true. 
+    do j = 1,size(edge_x,3)
+        if (amesh%pz(edge_x(qnode_2,qnode_3,j)) >= surface-0.001) then   ! the 0.001 is to account for possible rounding error 
+            not_surface = .false.
+            exit 
+        endif 
+    enddo 
+    if (not_surface) then 
+        quad_dist(edge_x(qnode_2,qnode_3,:)) = i_value !if not on surface include in border
+    endif 
+    call onevsall2d(amesh,quad_dist,fast)
+    quad_dist = quad_dist-i_value  !remove large number to get actual distance
+    bc_dist(i,:) = quad_dist
+enddo
+return 
+end subroutine boundary_distV2
+!====================================================================
 subroutine boundary_dist(slipping_cell,qmesh,amesh,edge_x,edge_z,surface,bc_dist,edge_dist,corner_dist,edge_exist)
 use distance
 integer,allocatable,dimension(:,:,:),intent(in) :: edge_x,edge_z
@@ -131,16 +180,16 @@ nz = size(edge_z,3)
 
 ! set just the point in the corner to zero 
 i_value = 4000._pr
-! corner_dist(edge_x(qnode_1,qnode_4,1)) =  0._pr !i_value 
-! corner_dist(edge_x(qnode_1,qnode_4,nx)) = 0._pr  !i_value
-! corner_dist(edge_x(qnode_2,qnode_3,1)) =  0._pr !i_value 
-! corner_dist(edge_x(qnode_2,qnode_3,nx)) = 0._pr !i_value
+corner_dist(edge_x(qnode_1,qnode_4,1)) =  0._pr !i_value 
+corner_dist(edge_x(qnode_1,qnode_4,nx)) = 0._pr  !i_value
+corner_dist(edge_x(qnode_2,qnode_3,1)) =  0._pr !i_value 
+corner_dist(edge_x(qnode_2,qnode_3,nx)) = 0._pr !i_value
 
 
-corner_dist(edge_x(qnode_1,qnode_4,1)) =  i_value 
-corner_dist(edge_x(qnode_1,qnode_4,nx)) = i_value
-corner_dist(edge_x(qnode_2,qnode_3,1)) =  i_value 
-corner_dist(edge_x(qnode_2,qnode_3,nx)) = i_value
+! corner_dist(edge_x(qnode_1,qnode_4,1)) =  i_value 
+! corner_dist(edge_x(qnode_1,qnode_4,nx)) = i_value
+! corner_dist(edge_x(qnode_2,qnode_3,1)) =  i_value 
+! corner_dist(edge_x(qnode_2,qnode_3,nx)) = i_value
 
 ! set the 3 points in the corner to zero
 ! corner_dist(edge_x(qnode_1,qnode_4,1:2)) = i_value 
@@ -154,7 +203,7 @@ corner_dist(edge_x(qnode_2,qnode_3,nx)) = i_value
 ! corner_dist(edge_z(qnode_1,qnode_2,nz-1:nz)) = i_value 
 fast =.true.
 call onevsall2d(amesh,corner_dist,fast)
-corner_dist = corner_dist-i_value 
+! corner_dist = corner_dist-i_value 
 
 
 
@@ -180,6 +229,84 @@ enddo
 
 return
 end function interior_edge
+
+!====================================================================
+subroutine add_slipV2(slipping_cell,qmesh,amesh,edge_x,edge_z,bc_dist,taper_dist,slip)
+type(mesh),intent(in) :: qmesh,amesh
+integer,dimension(:,:,:),intent(in) :: edge_x,edge_z
+real(pr), dimension(:,:),intent(in) :: bc_dist
+integer,intent(in) :: slipping_cell
+integer,dimension(3) :: query_cell
+real(pr), allocatable, dimension(:),intent(out) :: slip 
+real(pr) :: d1,d2,d3,d4,mean_d,edge_d,bary_x,bary_y
+real(pr),intent(in) :: taper_dist
+integer:: qnode_1,qnode_2,qnode_3,qnode_4
+integer,dimension(3) :: query_nodes
+integer :: istart,iend,i,j,nz,nx
+logical :: inside,edge_exist,is_edge_node
+real(pr),dimension(4) :: quad_x,quad_y
+real(pr),allocatable,dimension(:,:) :: all_slip
+real(pr) :: slip_edge
+real(pr) :: const,total_slip,correction
+! real(pr),parameter :: kilo = 1000._pr 
+
+allocate(all_slip(qmesh%Ncells,amesh%Ncells))
+allocate(slip(amesh%Ncells))
+slip = 0._pr
+all_slip = 0._pr
+
+do j = 1,qmesh%Ncells
+    qnode_1 = qmesh%cell(j,1)
+    qnode_2 = qmesh%cell(j,2)
+    qnode_3 = qmesh%cell(j,3)
+    qnode_4 = qmesh%cell(j,4)
+
+    quad_x = (/ qmesh%px(qnode_1),qmesh%px(qnode_2),qmesh%px(qnode_3),qmesh%px(qnode_4)  /)
+    quad_y = (/ qmesh%py(qnode_1),qmesh%py(qnode_2),qmesh%py(qnode_3),qmesh%py(qnode_4) /)
+
+    i = 1
+    do while (i<amesh%ncells)
+        bary_x = (amesh%px(amesh%cell(i,1))+amesh%px(amesh%cell(i,2))+amesh%px(amesh%cell(i,3))+amesh%px(amesh%cell(i+1,3)))/4._pr
+        bary_y = (amesh%py(amesh%cell(i,1))+amesh%py(amesh%cell(i,2))+amesh%py(amesh%cell(i,3))+amesh%py(amesh%cell(i+1,3)))/4._pr
+
+    ! inside = .true.
+        inside = pt_inside_quad(bary_x,bary_y,quad_x,quad_y)   ! check if cell is inside the slipping quadrangle
+
+        d1 = bc_dist(j,amesh%cell(i,1))
+        d2 = bc_dist(j,amesh%cell(i,2))
+        d3 = bc_dist(j,amesh%cell(i,3))
+        d4 = bc_dist(j,amesh%cell(i+1,3))
+        mean_d = (d1+d2+d3+d4)/4._pr
+        ! mean_d = (d1+d2+d3)/3._pr
+    const =0.5_pr
+    if (inside) then  ! inside slipping cell 
+        all_slip(j,i) = const+mean_d/taper_dist
+    else ! outside slipping cell 
+        all_slip(j,i) = const-mean_d/taper_dist  
+    endif
+
+    if (all_slip(j,i) > 1._pr) all_slip(j,i) = 1._pr 
+    if (all_slip(j,i) < 0._pr) all_slip(j,i) = 0._pr 
+    all_slip(j,i+1) = all_slip(j,i) 
+    i = i+2
+    enddo 
+enddo 
+
+!
+i = 1
+do while (i<amesh%ncells)
+    total_slip = sum(all_slip(:,i))
+    ! correction = 1._pr
+    ! if (total_slip > 1) correction = 1._pr/total_slip
+    correction = 1._pr/total_slip
+    slip(i) = all_slip(slipping_cell,i)*correction
+    slip(i+1) = slip(i)
+    i = i+2
+enddo 
+
+return
+end subroutine add_slipV2
+!====================================================================
 !====================================================================
 subroutine add_slip(slipping_cell,qmesh,amesh,edge_x,edge_z,tri2quad,bc_dist,edge_dist,corner_dist,edge_exist,taper_dist,slip)
 type(mesh),intent(in) :: qmesh,amesh
