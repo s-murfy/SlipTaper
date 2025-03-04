@@ -307,7 +307,7 @@ enddo
 ! c3 = edge_x(qnode_2,qnode_3,1)
 ! c4 = edge_x(qnode_1,qnode_4,nx)
 
-
+! check that slip when combined gives a value 
 i = 1
 do while (i<amesh%ncells)
 
@@ -794,7 +794,7 @@ integer,dimension(:,:,:),intent(in) :: edge_x,edge_z
 integer,intent(in) :: slipping_cell
 integer :: q1,q2,q3,q4
 integer :: i,j,count
-logical :: is_edge_node
+logical :: is_edge_node,edge
 
 q1 = qmesh%cell(slipping_cell,1)
 q2 = qmesh%cell(slipping_cell,2)
@@ -805,17 +805,15 @@ is_edge_node = .false.
 
 
 ! check one vertical side of quadrangle 
-count = 0
+edge = .true.
 do i = 1,qmesh%Ncells
     if (i == slipping_cell) cycle
-    do j = 1,4 
-        if (q1==qmesh%cell(i,j) .or. q2==qmesh%cell(i,j)) then
-            count = count +1
-        endif 
-    enddo 
+    if (any(q1==qmesh%cell(i,:)).and.any(q2==qmesh%cell(i,:))) then
+        edge =.false.
+    endif 
 enddo 
-if (count < 2) then 
-    !write(*,*) 'on right slab edge'
+if (edge) then 
+    ! write(*,*) 'on right slab edge'
     do j = 1,3
         if (any(nodes(j)==edge_z(q1,q2,:))) then 
                 is_edge_node = .true.
@@ -826,48 +824,48 @@ endif
 
 
 ! check other vertical side of quadrangle 
-
-count = 0
+edge = .true.
 do i = 1,qmesh%Ncells
     if (i == slipping_cell) cycle
-    do j = 1,4 
-        if (q3 == qmesh%cell(i,j) .or. q4 == qmesh%cell(i,j)) then
-            count = count +1
-        endif 
-    enddo 
+    if (any(q3==qmesh%cell(i,:)).and.any(q4==qmesh%cell(i,:))) then
+        edge =.false.
+    endif 
 enddo 
-if (count < 2) then 
-    !write(*,*) 'on left slab edge'
-        do j = 1,3
-            if (any(nodes(j)==edge_z(q3,q4,:))) then 
-                is_edge_node = .true.
-                return 
-            endif 
-        enddo 
-     
+
+if (edge) then 
+    ! write(*,*) 'on left slab edge'
+    do j = 1,3
+        if (any(nodes(j)==edge_z(q3,q4,:))) then 
+            is_edge_node = .true.
+            return 
+        endif 
+    enddo     
 endif 
+
 
 
 ! check bottom side of quadrangle 
-count = 0
+edge = .true.
 do i = 1,qmesh%Ncells
+    count = 0
     if (i == slipping_cell) cycle
-    do j = 1,4 
-        if (q1 == qmesh%cell(i,j) .or. q4 == qmesh%cell(i,j)) then
-            count = count +1
-        endif 
-    enddo 
+    if (any(q1==qmesh%cell(i,:)).and.any(q4==qmesh%cell(i,:))) then
+        edge =.false.
+    endif 
 enddo 
 
-if (count < 2) then 
-        write(*,*) 'on bottom slab edge'
-        do j = 1,3
-            if (any(nodes(j)==edge_x(q1,q2,:))) then 
-                is_edge_node = .true.
-                return
-            endif 
-        enddo 
+if (edge) then 
+    ! write(*,*) 'on bottom slab edge'
+    do j = 1,3
+        if (any(nodes(j)==edge_x(q1,q4,:))) then 
+            is_edge_node = .true.
+            return
+        endif 
+    enddo 
 endif 
+
+
+
 
 return
 end function check_slab_edge
