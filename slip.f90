@@ -243,14 +243,13 @@ real(pr),intent(in) :: taper_dist
 integer:: qnode_1,qnode_2,qnode_3,qnode_4
 integer,dimension(3) :: query_nodes
 integer :: i,j,nz,nx
-logical :: inside,edge_exist,is_edge_node
+logical :: inside,edge_exist,is_edge_node,there_is_slab_edge
 real(pr),dimension(4) :: quad_x,quad_y
 real(pr),allocatable,dimension(:,:) :: all_slip
 real(pr) :: slip_edge
-real(pr) :: const,total_slip,correction
-! real(pr),parameter :: kilo = 1000._pr 
+real(pr) :: const,total_slip,correction,slip_near_boundary
 integer :: count 
-real(pr) :: c1,c2,c3,c4
+! real(pr) :: c1,c2,c3,c4
 
 
 allocate(all_slip(qmesh%Ncells,amesh%Ncells))
@@ -281,7 +280,7 @@ do j = 1,qmesh%Ncells
         d4 = bc_dist(j,amesh%cell(i+1,3))
         mean_d = (d1+d2+d3+d4)/4._pr
         ! mean_d = (d1+d2+d3)/3._pr
-    const =0.5_pr
+    const = 0.5_pr
     if (inside) then  ! inside slipping cell 
         all_slip(j,i) = const+mean_d/taper_dist
     else ! outside slipping cell 
@@ -295,55 +294,80 @@ do j = 1,qmesh%Ncells
     enddo 
 enddo 
 
-! 
-! qnode_1 = qmesh%cell(slipping_cell,1)
-! qnode_2 = qmesh%cell(slipping_cell,2)
-! qnode_3 = qmesh%cell(slipping_cell,3)
-! qnode_4 = qmesh%cell(slipping_cell,4)
-! nz = size(edge_z,3)
-! nx = size(edge_x,3)
-! c1 = edge_x(qnode_1,qnode_4,1) 
-! c2 = edge_x(qnode_2,qnode_3,nx)
-! c3 = edge_x(qnode_2,qnode_3,1)
-! c4 = edge_x(qnode_1,qnode_4,nx)
-
-! check that slip when combined gives a value 
-i = 1
-do while (i<amesh%ncells)
-
+! find value along slab edge if it exits
+there_is_slab_edge = .false.
+slip_near_boundary = 0.6   ! this is a preset value that should not be used if 
+do i = 1,amesh%ncells  
     query_nodes = amesh%cell(i,:)
     is_edge_node = check_slab_edge(query_nodes,slipping_cell,edge_x,edge_z,qmesh)! check if cell has a node on the edge 
 
     if (is_edge_node) then  ! at the edge of slab and we do not  apply a global balanace of slip
-    ! write(*,*) i,'on an edge'  
-        slip(i) = all_slip(slipping_cell,i)
-    else 
-        total_slip = sum(all_slip(:,i))
-        correction = 1._pr/total_slip
-        slip(i) = all_slip(slipping_cell,i)*correction
+        there_is_slab_edge = .true.
+        count =  0
+        do j = 1,qmesh%Ncells
+            if (all_slip(j,i) > epsilon(1._pr)) then
+            count = count +1
+            endif 
+        enddo 
+
+        if (count == 1) then 
+            slip_near_boundary = all_slip(slipping_cell,i)
+            exit
+        endif 
     endif 
+enddo 
 
+write(*,*) 'slip near boundary edge', slip_near_boundary
+! slip_near_boundary = 0.6
+! check that slip when combined gives a value 
+i = 1
+do while (i<amesh%ncells)
+    query_nodes = amesh%cell(i,:)
+    is_edge_node = check_slab_edge(query_nodes,slipping_cell,edge_x,edge_z,qmesh)! check if cell has a node on the edge 0
+    if (.not.is_edge_node) then  ! check the other cell also 
+        query_nodes = amesh%cell(i+1,:)
+        is_edge_node = check_slab_edge(query_nodes,slipping_cell,edge_x,edge_z,qmesh)! check if cell has a node on the edge 0
+    endif 
+    total_slip = sum(all_slip(:,i))
 
-    ! count =  0
-    ! do j = 1,qmesh%Ncells
-    !     if (all_slip(j,i) > epsilon(1._pr)) then
-    !       count = count +1
-    !     endif 
-    ! enddo 
+    count =  0
+    do j = 1,qmesh%Ncells
+        if (all_slip(j,i) > epsilon(1._pr)) then
+        count = count +1
+        endif 
+    enddo 
 
-    ! if (count > 1) then 
-    !     total_slip = sum(all_slip(:,i))
-    !     ! correction = 1._pr
-    !     ! if (total_slip > 1) correction = 1._pr/total_slip
-    !     correction = 1._pr/total_slip
-    !     slip(i) = all_slip(slipping_cell,i)*correction
-    ! else    ! at the edge of slab and we do not need to apply a global balanace 
-    !     slip(i) = all_slip(slipping_cell,i)
-    ! endif 
-
+    if (is_edge_node) then  ! at the edge of slab and we do not  apply a global balanace of slip
+    ! write(*,*) i,'on an edge'  
+        correction = slip_near_boundary/total_slip
+    elseif (count == 1) then     ! there is no overlap with other cells and not near boundary  
+        correction = 1._pr
+    else         
+        correction = 1._pr/total_slip
+    endif    ! internal overlap with cells 
+       slip(i) = all_slip(slipping_cell,i)*correction
+ 
     slip(i+1) = slip(i)
     i = i+2
 enddo 
+
+! correct nodes outside of slipping cell that are also on boundary
+if (there_is_slab_edge) then  ! this is triggered only in the case where we found an slab edge in the first calculation of the slip
+    i = 1
+    do while (i<amesh%ncells)
+        if (slip(i) > epsilon(slip(i))) then  
+            query_nodes = amesh%cell(i,:)
+            is_edge_node = check_all_slab_edge(query_nodes,edge_x,edge_z,qmesh)! check if cell has a node on the edge 0
+            if (is_edge_node) then  ! at the edge of slab and we do not  apply a global balanace of slip
+                total_slip = sum(all_slip(:,i))
+                correction = slip_near_boundary/total_slip
+                slip(i) = all_slip(slipping_cell,i)*correction      
+                slip(i+1) = slip(i)
+            endif 
+        endif 
+        i = i+2
+    enddo
+endif 
 
 return
 end subroutine add_slipV2
@@ -793,82 +817,189 @@ integer,dimension(3),intent(in) :: nodes
 integer,dimension(:,:,:),intent(in) :: edge_x,edge_z
 integer,intent(in) :: slipping_cell
 integer :: q1,q2,q3,q4
-integer :: i,j,count
+integer :: i,j,k,count
 logical :: is_edge_node,edge
 
-q1 = qmesh%cell(slipping_cell,1)
-q2 = qmesh%cell(slipping_cell,2)
-q3 = qmesh%cell(slipping_cell,3)
-q4 = qmesh%cell(slipping_cell,4)
-
-is_edge_node = .false.
 
 
-! check one vertical side of quadrangle 
-edge = .true.
-do i = 1,qmesh%Ncells
-    if (i == slipping_cell) cycle
-    if (any(q1==qmesh%cell(i,:)).and.any(q2==qmesh%cell(i,:))) then
-        edge =.false.
+! do k = 1,qmesh%Ncells
+!     q1 = qmesh%cell(k,1)
+!     q2 = qmesh%cell(k,2)
+!     q3 = qmesh%cell(k,3)
+!     q4 = qmesh%cell(k,4)
+
+
+    q1 = qmesh%cell(slipping_cell,1)
+    q2 = qmesh%cell(slipping_cell,2)
+    q3 = qmesh%cell(slipping_cell,3)
+    q4 = qmesh%cell(slipping_cell,4)
+
+    is_edge_node = .false.
+
+
+    ! check one vertical side of quadrangle 
+    edge = .true.
+    do i = 1,qmesh%Ncells
+        ! if (i == k) cycle
+        if (i == slipping_cell) cycle
+        if (any(q1==qmesh%cell(i,:)).and.any(q2==qmesh%cell(i,:))) then
+            edge =.false.
+        endif 
+    enddo 
+    if (edge) then 
+        ! write(*,*) 'on right slab edge'
+        do j = 1,3
+            if (any(nodes(j)==edge_z(q1,q2,:))) then 
+                    is_edge_node = .true.
+                    return
+            endif 
+        enddo 
     endif 
-enddo 
-if (edge) then 
-    ! write(*,*) 'on right slab edge'
-    do j = 1,3
-        if (any(nodes(j)==edge_z(q1,q2,:))) then 
+
+
+    ! check other vertical side of quadrangle 
+    edge = .true.
+    do i = 1,qmesh%Ncells
+        ! if (i == k) cycle
+        if (i == slipping_cell) cycle
+        if (any(q3==qmesh%cell(i,:)).and.any(q4==qmesh%cell(i,:))) then
+            edge =.false.
+        endif 
+    enddo 
+
+    if (edge) then 
+        ! write(*,*) 'on left slab edge'
+        do j = 1,3
+            if (any(nodes(j)==edge_z(q3,q4,:))) then 
+                is_edge_node = .true.
+                return 
+            endif 
+        enddo     
+    endif 
+
+
+
+    ! check bottom side of quadrangle 
+    edge = .true.
+    do i = 1,qmesh%Ncells
+        count = 0
+        ! if (i == k) cycle
+        if (i == slipping_cell) cycle
+        if (any(q1==qmesh%cell(i,:)).and.any(q4==qmesh%cell(i,:))) then
+            edge =.false.
+        endif 
+    enddo 
+
+    if (edge) then 
+        ! write(*,*) 'on bottom slab edge'
+        do j = 1,3
+            if (any(nodes(j)==edge_x(q1,q4,:))) then 
                 is_edge_node = .true.
                 return
-        endif 
-    enddo 
-endif 
-
-
-! check other vertical side of quadrangle 
-edge = .true.
-do i = 1,qmesh%Ncells
-    if (i == slipping_cell) cycle
-    if (any(q3==qmesh%cell(i,:)).and.any(q4==qmesh%cell(i,:))) then
-        edge =.false.
+            endif 
+        enddo 
     endif 
-enddo 
-
-if (edge) then 
-    ! write(*,*) 'on left slab edge'
-    do j = 1,3
-        if (any(nodes(j)==edge_z(q3,q4,:))) then 
-            is_edge_node = .true.
-            return 
-        endif 
-    enddo     
-endif 
-
-
-
-! check bottom side of quadrangle 
-edge = .true.
-do i = 1,qmesh%Ncells
-    count = 0
-    if (i == slipping_cell) cycle
-    if (any(q1==qmesh%cell(i,:)).and.any(q4==qmesh%cell(i,:))) then
-        edge =.false.
-    endif 
-enddo 
-
-if (edge) then 
-    ! write(*,*) 'on bottom slab edge'
-    do j = 1,3
-        if (any(nodes(j)==edge_x(q1,q4,:))) then 
-            is_edge_node = .true.
-            return
-        endif 
-    enddo 
-endif 
-
+! enddo 
 
 
 
 return
 end function check_slab_edge
+!====================================================================
+!====================================================================
+function check_all_slab_edge(nodes,edge_x,edge_z,qmesh) result(is_edge_node)
+type(mesh),intent(in) :: qmesh
+integer,dimension(3),intent(in) :: nodes
+integer,dimension(:,:,:),intent(in) :: edge_x,edge_z
+integer :: q1,q2,q3,q4
+integer :: i,j,k,count
+logical :: is_edge_node,edge
+
+
+
+do k = 1,qmesh%Ncells
+    q1 = qmesh%cell(k,1)
+    q2 = qmesh%cell(k,2)
+    q3 = qmesh%cell(k,3)
+    q4 = qmesh%cell(k,4)
+
+
+    ! q1 = qmesh%cell(slipping_cell,1)
+    ! q2 = qmesh%cell(slipping_cell,2)
+    ! q3 = qmesh%cell(slipping_cell,3)
+    ! q4 = qmesh%cell(slipping_cell,4)
+
+    is_edge_node = .false.
+
+
+    ! check one vertical side of quadrangle 
+    edge = .true.
+    do i = 1,qmesh%Ncells
+        if (i == k) cycle
+        ! if (i == slipping_cell) cycle
+        if (any(q1==qmesh%cell(i,:)).and.any(q2==qmesh%cell(i,:))) then
+            edge =.false.
+        endif 
+    enddo 
+    if (edge) then 
+        ! write(*,*) 'on right slab edge'
+        do j = 1,3
+            if (any(nodes(j)==edge_z(q1,q2,:))) then 
+                    is_edge_node = .true.
+                    return
+            endif 
+        enddo 
+    endif 
+
+
+    ! check other vertical side of quadrangle 
+    edge = .true.
+    do i = 1,qmesh%Ncells
+        if (i == k) cycle
+        ! if (i == slipping_cell) cycle
+        if (any(q3==qmesh%cell(i,:)).and.any(q4==qmesh%cell(i,:))) then
+            edge =.false.
+        endif 
+    enddo 
+
+    if (edge) then 
+        ! write(*,*) 'on left slab edge'
+        do j = 1,3
+            if (any(nodes(j)==edge_z(q3,q4,:))) then 
+                is_edge_node = .true.
+                return 
+            endif 
+        enddo     
+    endif 
+
+
+
+    ! check bottom side of quadrangle 
+    edge = .true.
+    do i = 1,qmesh%Ncells
+        count = 0
+        if (i == k) cycle
+        ! if (i == slipping_cell) cycle
+        if (any(q1==qmesh%cell(i,:)).and.any(q4==qmesh%cell(i,:))) then
+            edge =.false.
+        endif 
+    enddo 
+
+    if (edge) then 
+        ! write(*,*) 'on bottom slab edge'
+        do j = 1,3
+            if (any(nodes(j)==edge_x(q1,q4,:))) then 
+                is_edge_node = .true.
+                return
+            endif 
+        enddo 
+    endif 
+enddo 
+
+
+
+return
+end function check_all_slab_edge
 !====================================================================
 function check_edge_node(nodes,c1,c2,c3,c4) result(is_edge_node)
 integer,dimension(3),intent(in) :: nodes
