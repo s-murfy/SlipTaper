@@ -317,8 +317,8 @@ do i = 1,amesh%ncells
     endif 
 enddo 
 
-write(*,*) 'slip near boundary edge', slip_near_boundary
-! slip_near_boundary = 0.6
+! write(*,*) 'slip near boundary edge', slip_near_boundary
+slip_near_boundary = 0.6   ! set slip at boundar to 0.6 
 ! check that slip when combined gives a value 
 i = 1
 do while (i<amesh%ncells)
@@ -340,12 +340,12 @@ do while (i<amesh%ncells)
     if (is_edge_node) then  ! at the edge of slab and we do not  apply a global balanace of slip
     ! write(*,*) i,'on an edge'  
         correction = slip_near_boundary/total_slip
-    elseif (count == 1) then     ! there is no overlap with other cells and not near boundary  
-        correction = 1._pr
+    ! elseif (count == 1) then     ! there is no overlap with other cells and not near boundary  
+    !     correction = 1._pr
     else         
         correction = 1._pr/total_slip
     endif    ! internal overlap with cells 
-       slip(i) = all_slip(slipping_cell,i)*correction
+    slip(i) = all_slip(slipping_cell,i)*correction
  
     slip(i+1) = slip(i)
     i = i+2
