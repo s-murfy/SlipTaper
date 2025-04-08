@@ -38,7 +38,7 @@ original_slipping_cell = slipping_cell
 call read_quadrangles(fname, fault_lon,fault_lat,fault_z,nfault,output_level)
 
 ! create mesh for whole fault 
-accuracy = 0.0001_pr
+accuracy = 0.01_pr
 call create_quad_mesh(fault_lon,fault_lat,fault_z,nfault,accuracy,fault_mesh,output_level)
 
 ! choose cells connected to slipping cell
