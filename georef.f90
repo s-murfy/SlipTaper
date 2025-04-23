@@ -149,11 +149,11 @@ subroutine utmgeo(long,lat,xx,yy,lonref,hemi,gref)
      ef6=gref%ef**6.d0
      ep2=ef2/(1.d0-ef2)
 ! false easting removal
-     if (hemi < 0) then 
-        m=(yy-10000000.d0)/ak
-     else
+   !   if (hemi < 0) then 
+   !      m=(yy-10000000.d0)/ak
+   !   else
         m=yy/ak
-     endif
+   !   endif
      mu=m/(gref%ra*(1.d0-ef2/4.d0-(3.d0/64.d0)*ef4-(5.d0/256.d0)*ef6))
      e1=(1.d0-sqrt(1.d0-ef2))/(1.d0+sqrt(1.d0-ef2))
      p1=mu+(1.5d0*e1-(27.d0/32.d0)*e1**3.d0)*sin(2.d0*mu)
@@ -211,7 +211,7 @@ subroutine geoutm(long,lat,xx,yy,lonref,gref)
      xx=500000.d0+ak*gref%ra*nu*(a+(1.d0-t+c)*a*a*a/6.d0+(5.d0-18.d0*t+t*t)*(a**5.d0)/120.d0)
      yy=ak*gref%ra*(sp+nu*tan(lat)*(a*a/2.d0+(5.d0-t+9.d0*c+4.d0*c*c)*a*a*a*a/24.d0+(61.d0-58.d0*t+t*t)*(a**6.d0)/720.d0))
 ! false northing for south hemisphere
-     if (lat < 0.d0) yy=yy+10000000.d0
+   !   if (lat < 0.d0) yy=yy+10000000.d0
     return
 end subroutine geoutm
      

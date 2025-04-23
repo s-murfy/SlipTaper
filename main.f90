@@ -25,6 +25,7 @@ integer:: nfault,nquad,slipping_cell,original_slipping_cell
 type(mesh) :: amesh,geomesh,rect_mesh,qmesh,fault_mesh
 integer :: anticlockwise
 character(:),allocatable :: fname 
+real(pr) :: lat_out,lon_out
 real(pr) :: slip_rake,surface,taper_dist
 integer :: output_level
 logical :: edge_exist
@@ -51,12 +52,17 @@ if (output_level >= 2) write(*,*) 'new slipping cell id............',slipping_ce
 allocate(quad_x(nquad,4),quad_y(nquad,4))
 
 ! set first point as the reference point 
-latref=quad_lat(1,1) 
-lonref=quad_lon(1,1)
+! latref= quad_lat(1,1) 
+! lonref=quad_lon(1,1)
+latref = sum(quad_lat(:,1))/nquad
+lonref = sum(quad_lon(:,1))/nquad 
+
+
 ! transfrom all points to utm
 subfault: do i = 1,nquad
     inside_cell: do j = 1,4
                 call convgeoutm(quad_lat(i,j),quad_lon(i,j),latref,lonref,quad_x(i,j),quad_y(i,j),1)
+                ! write(*,*) 'quad_lat',quad_lat(i,j),'quad_lon',quad_lon(i,j)
         enddo inside_cell
         ! write(*,*) 'quadrangle cell no', i
         ! anticlockwise = check_anticlockwise(quad_x(i,:),quad_y(i,:),4)
@@ -117,6 +123,14 @@ endif
 if (output_level >= 2) write(*,*) 'convert to lat/lon'
 call convert2geo(amesh,latref,lonref,geomesh)
 
+
+! do i = 1,nquad
+!     do j = 1,4
+!                 call convgeoutm(lat_out,lon_out,latref,lonref,quad_x(i,j),quad_y(i,j),-1)
+!                 write(*,*) 'lat_out',lat_out,'long_out',lon_out
+!                 write(*,*) 'difference in lat/lon',quad_lat(i,j)-lat_out,quad_lon(i,j)-lon_out
+!     enddo 
+! enddo 
 
 if (output_level >= 2) write(*,*) 'output slip in lat/lon coordinates'
 

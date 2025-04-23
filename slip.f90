@@ -14,20 +14,17 @@ real(pr),allocatable,dimension(:,:) :: bc_dist
 real(pr),allocatable,dimension(:) :: quad_dist
 
 real(pr),intent(in) :: surface
-real(pr) :: i_value,mean_depth
+real(pr) :: i_value
 integer :: qnode_1,qnode_2,qnode_3,qnode_4
 logical :: fast ,not_surface
 integer :: i,j
-integer :: nx,nz
+
 
 if (allocated(bc_dist)) deallocate(bc_dist)
 allocate(bc_dist(qmesh%Nnodes,amesh%Nnodes))
 allocate(quad_dist(amesh%Nnodes))
-i_value = 10000000._pr  ! use a large number to generate for the generation of plane wavefront
+i_value = 1000000000._pr  ! use a large number to generate for the generation of plane wavefront
 fast = .true.
-
-nx = size(edge_x,3)
-nz = size(edge_z,3)
 
 do i = 1,qmesh%Ncells
     quad_dist = infinity
@@ -36,44 +33,182 @@ do i = 1,qmesh%Ncells
     qnode_3 = qmesh%cell(i,3)
     qnode_4 = qmesh%cell(i,4)
 !set sides of quadrangle to zero 
-    ! write(*,*) 'node id',qnode_1,qnode_2,qnode_3,qnode_4
-! check all edges of the quadrangle to see if they are on the surface // change added due to Gareth's code
+    quad_dist(edge_z(qnode_1,qnode_2,:)) = i_value
+    quad_dist(edge_z(qnode_3,qnode_4,:)) = i_value
+    quad_dist(edge_x(qnode_1,qnode_4,:)) = i_value
+!only possible edge connected with surface is qnode_2,qnode_3
 ! if any node is equal to or above surface leave out of distance calculation meaing taper is not applied
     not_surface = .true. 
-    if (edge_x(qnode_2,qnode_3,nx) > 0) then ! this means the whole edge is okay 
-        mean_depth = sum(amesh%pz(edge_x(qnode_2,qnode_3,:)))/size(edge_x,3)
-        if (abs(mean_depth-surface) >= 0.1) then   ! the 0.001 is to account for possible rounding error 
-            quad_dist(edge_x(qnode_2,qnode_3,:)) = i_value !if not on surface include in border
+    do j = 1,size(edge_x,3)
+        if (amesh%pz(edge_x(qnode_2,qnode_3,j)) >= surface-0.001) then   ! the 0.001 is to account for possible rounding error 
+            not_surface = .false.
+            exit 
         endif 
+    enddo 
+    if (not_surface) then 
+        quad_dist(edge_x(qnode_2,qnode_3,:)) = i_value !if not on surface include in border
     endif 
-
-    if (edge_x(qnode_1,qnode_4,nx)> 0) then ! this means the whole edge is okay 
-        mean_depth = sum(amesh%pz(edge_x(qnode_1,qnode_4,:)))/size(edge_x,3)
-        if (abs(mean_depth-surface) >= 0.1) then   ! the 0.001 is to account for possible rounding error 
-            quad_dist(edge_x(qnode_1,qnode_4,:)) = i_value !if not on surface include in border
-        endif
-    endif 
-
-    if (edge_z(qnode_1,qnode_2,nx) > 0) then 
-        mean_depth = sum(amesh%pz(edge_z(qnode_1,qnode_2,:)))/size(edge_z,3)
-        if (abs(mean_depth-surface) >= 0.1) then   ! the 0.001 is to account for possible rounding error 
-            quad_dist(edge_z(qnode_1,qnode_2,:)) = i_value !if not on surface include in border
-        endif
-    endif
-
-    if (edge_z(qnode_3,qnode_4,nz) > 0) then 
-        mean_depth = sum(amesh%pz(edge_z(qnode_3,qnode_4,:)))/size(edge_z,3)
-        if (abs(mean_depth-surface) >= 0.1) then   ! the 0.001 is to account for possible rounding error 
-            quad_dist(edge_z(qnode_3,qnode_4,:)) = i_value !if not on surface include in border
-        endif
-    endif 
-
     call onevsall2d(amesh,quad_dist,fast)
     quad_dist = quad_dist-i_value  !remove large number to get actual distance
     bc_dist(i,:) = quad_dist
 enddo
 return 
 end subroutine boundary_distV2
+!====================================================================
+subroutine boundary_dist(slipping_cell,qmesh,amesh,edge_x,edge_z,surface,bc_dist,edge_dist,corner_dist,edge_exist)
+use distance
+integer,allocatable,dimension(:,:,:),intent(in) :: edge_x,edge_z
+type(mesh),intent(in) :: qmesh,amesh
+real(pr),allocatable,dimension(:) :: bc_dist,edge_dist,corner_dist
+real(pr),intent(in) :: surface
+real(pr) :: i_value
+integer,intent(in) :: slipping_cell
+integer :: qnode_1,qnode_2,qnode_3,qnode_4
+logical :: fast ,not_surface
+integer :: i,nx,nz
+logical :: edge_12,edge_34,edge_14,edge_23,edge_exist
+
+
+qnode_1 = qmesh%cell(slipping_cell,1)
+qnode_2 = qmesh%cell(slipping_cell,2)
+qnode_3 = qmesh%cell(slipping_cell,3)
+qnode_4 = qmesh%cell(slipping_cell,4)
+
+
+
+if (allocated(bc_dist)) deallocate(bc_dist)
+if (allocated(edge_dist)) deallocate(edge_dist)
+
+allocate(bc_dist(amesh%Nnodes))
+bc_dist = infinity
+allocate(edge_dist(amesh%Nnodes))
+edge_dist = infinity
+
+i_value = 10000000._pr  ! use a large number to generate for the generation of plane wavefront
+!set sides of quadrangle to zero 
+! bc_dist(edge_z(qnode_1,qnode_2,:)) = i_value
+! bc_dist(edge_z(qnode_3,qnode_4,:)) = i_value 
+! bc_dist(edge_x(qnode_1,qnode_4,:)) = i_value  
+
+! check if any of the edges are interior edges 
+edge_23 = interior_edge(qmesh,qnode_2,qnode_3,slipping_cell)
+
+edge_12 = interior_edge(qmesh,qnode_1,qnode_2,slipping_cell)
+edge_34 = interior_edge(qmesh,qnode_3,qnode_4,slipping_cell)
+edge_14 = interior_edge(qmesh,qnode_1,qnode_4,slipping_cell)
+
+! if (.not.edge_12) write(*,*) 'edge 12 is on edge of mesh'
+! if (.not.edge_34) write(*,*) 'edge 34 is on edge of mesh'
+! if (.not.edge_14) write(*,*) 'edge 14 is on edge of mesh'
+
+if((.not.edge_12).or.(.not.edge_34).or.(.not.edge_14)) then 
+    ! write(*,*) 'we have an external edge !'
+    edge_exist = .true.
+endif 
+
+if (edge_12) then 
+    bc_dist(edge_z(qnode_1,qnode_2,:)) = i_value
+else    ! edge of slab , using different taper condition 
+    edge_dist(edge_z(qnode_1,qnode_2,:)) = i_value
+    do i =1,qmesh%Nnodes ! also need to set sides on adjoining quadrangle cells also 
+        edge_dist(edge_z(qnode_1,i,:)) = i_value
+        edge_dist(edge_z(i,qnode_2,:)) = i_value
+    enddo 
+endif 
+
+if (edge_34) then 
+    bc_dist(edge_z(qnode_3,qnode_4,:)) = i_value
+else     ! edge of slab , using different taper condition 
+    edge_dist(edge_z(qnode_3,qnode_4,:)) = i_value
+    do i =1,qmesh%Nnodes ! also need to set sides on adjoining quadrangle cells also 
+        edge_dist(edge_z(qnode_3,i,:)) = i_value
+        edge_dist(edge_z(i,qnode_4,:)) = i_value
+    enddo
+endif
+
+if (edge_14) then 
+    bc_dist(edge_x(qnode_1,qnode_4,:)) = i_value
+else 
+    edge_dist(edge_x(qnode_1,qnode_4,:)) = i_value
+    do i =1,qmesh%Nnodes ! also need to set sides on adjoining quadrangle cells also 
+        edge_dist(edge_x(qnode_1,i,:)) = i_value
+        edge_dist(edge_x(i,qnode_4,:)) = i_value
+    enddo
+endif
+
+!only possible edge connected with surface is qnode_2,qnode_3
+! if any node is equal to or above surface leave out of distance calculation meaing taper is not applied
+not_surface = .true. 
+do i = 1,size(edge_x,3)
+    if (amesh%pz(edge_x(qnode_2,qnode_3,i)) >= surface-0.001) then   ! the 0.001 is to account for possible rounding error 
+        not_surface = .false.
+        exit 
+    endif 
+enddo 
+
+
+if (not_surface) then 
+
+    if(edge_23) then 
+        bc_dist(edge_x(qnode_2,qnode_3,:)) = i_value !if not on surface include in border
+    else
+        edge_dist(edge_x(qnode_2,qnode_3,:)) = i_value
+        do i =1,qmesh%Nnodes ! also need to set sides on adjoining quadrangle cells also 
+            edge_dist(edge_x(i,qnode_3,:)) = i_value
+            edge_dist(edge_x(qnode_2,i,:)) = i_value
+        enddo
+    endif 
+endif 
+
+!bc_dist(edge_x(qnode_2,qnode_3,:)) =  i_value   
+
+fast = .true.
+call onevsall2d(amesh,bc_dist,fast)
+bc_dist = bc_dist-i_value  !remove large number to get actual distance
+
+if (edge_exist) then 
+    ! write(*,*) 'edge exist and distance from boundary being calculated'
+    call onevsall2d(amesh,edge_dist,fast)
+    edge_dist = edge_dist-i_value 
+endif 
+
+allocate(corner_dist(amesh%Nnodes))
+corner_dist = infinity
+nx = size(edge_x,3)
+nz = size(edge_z,3)
+
+
+! set just the point in the corner to zero 
+i_value = 4000._pr
+corner_dist(edge_x(qnode_1,qnode_4,1)) =  0._pr !i_value 
+corner_dist(edge_x(qnode_1,qnode_4,nx)) = 0._pr  !i_value
+corner_dist(edge_x(qnode_2,qnode_3,1)) =  0._pr !i_value 
+corner_dist(edge_x(qnode_2,qnode_3,nx)) = 0._pr !i_value
+
+
+! corner_dist(edge_x(qnode_1,qnode_4,1)) =  i_value 
+! corner_dist(edge_x(qnode_1,qnode_4,nx)) = i_value
+! corner_dist(edge_x(qnode_2,qnode_3,1)) =  i_value 
+! corner_dist(edge_x(qnode_2,qnode_3,nx)) = i_value
+
+! set the 3 points in the corner to zero
+! corner_dist(edge_x(qnode_1,qnode_4,1:2)) = i_value 
+! corner_dist(edge_x(qnode_1,qnode_4,nx-1:nx)) = i_value
+! corner_dist(edge_x(qnode_2,qnode_3,1:2)) = i_value 
+! corner_dist(edge_x(qnode_2,qnode_3,nx-1:nx)) = i_value 
+
+! corner_dist(edge_z(qnode_3,qnode_4,1:2)) = i_value  
+! corner_dist(edge_z(qnode_3,qnode_4,nz-1:nz)) = i_value 
+! corner_dist(edge_z(qnode_1,qnode_2,1:2)) = i_value  
+! corner_dist(edge_z(qnode_1,qnode_2,nz-1:nz)) = i_value 
+fast =.true.
+call onevsall2d(amesh,corner_dist,fast)
+! corner_dist = corner_dist-i_value 
+
+
+
+return 
+end subroutine boundary_dist
 !====================================================================
 function interior_edge(qmesh,n1,n2,current_cell) result(is_interior_edge)
 type(mesh),intent(in) :: qmesh

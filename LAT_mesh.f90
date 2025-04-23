@@ -146,8 +146,6 @@ allocate(edge_x(qmesh%Nnodes,qmesh%Nnodes,nx),edge_z(qmesh%Nnodes,qmesh%Nnodes,n
 edge_x = 0
 edge_z = 0
 
-!write(*,*) 'number of cells in quadrangle mesh',qmesh%Ncells
-
 tmp%Nnodes = nx*nz*qmesh%Ncells
 allocate(tmp%px(tmp%Nnodes),tmp%py(tmp%Nnodes),tmp%pz(tmp%Nnodes))
 tmp%px = 0.d0
@@ -186,7 +184,7 @@ large_cells: do k = 1,qmesh%Ncells
 
       enddo alongstrike  
    enddo downdip
-   
+
    if (output_level >= 2)  write(*,*)'est. cell, width, length',k,               &
                    sqrt((xe-xs)**2+(ye-ys)**2+(ze-zs)**2),                       &
                    sqrt((x(2)-x(1))**2+(y(2)-y(1))**2+(z(2)-z(1))**2)
@@ -208,7 +206,7 @@ full_fault: do k = 1,qmesh%Ncells
             qnode_2 = qmesh%cell(k,2)
             qnode_3 = qmesh%cell(k,3)
             qnode_4 = qmesh%cell(k,4)
-            ! write(*,*) 'qnodes....',k,qnode_1,qnode_2,qnode_3,qnode_4
+   !         write(*,*) 'qnodes....',qnode_1,qnode_2,qnode_3,qnode_4
             id_start = (k-1)*nx*nz+1  !
             id_end = (k-1)*nz*nx+nx*(nz-1) 
  !           write(*,*) 'start/end indices...',id_start,id_end,id_end-id_start
@@ -221,22 +219,15 @@ full_fault: do k = 1,qmesh%Ncells
                      bc = .true.
             ! check if edge point is already in the list
                      if (i==id_start) then ! checking bottom left corner
-
                            call bottom_left_corner(qnode_1,qnode_2,qnode_4,i,i+nx,i+nx+1,i+1,tmp,edge_x,edge_z,cell)
+  !                         write(*,*) 'applying bottom_left_corner test using bottom edge........'
                            cell_updated = .true.
-!                            if (.not.cell_updated) then 
-!                               call bottom_right_corner(qnode_1,qnode_3,qnode_4,i,i+nx,i+nx+1,i+1,tmp,edge_x,edge_z,cell)
-!                               write(*,*) 'applying new test'
-!   !                         write(*,*) 'applying bottom_left_corner test using bottom edge........'
-!                               cell_updated = .true.
-!                            endif 
                            if ((any(cell(1,:) == 0)).or.(any(cell(2,:) == 0))) then 
                                write(*,*) 'problem bottom_left_corner'
                                stop 
                            endif 
                            
                      elseif (i == id_start+nx-2 ) then  ! check bottom right corner
-
                            call bottom_right_corner(qnode_1,qnode_3,qnode_4,i,i+nx,i+nx+1,i+1,tmp,edge_x,edge_z,cell)
    !                        write(*,*) 'applying bottom right corner test using bottom edge........'
                            cell_updated = .true.
@@ -369,9 +360,6 @@ full_fault: do k = 1,qmesh%Ncells
    enddo
  
 
-
-
-
 ! copy the nodes to the new mesh
    amesh%Nnodes = nnodes 
    allocate(amesh%px(amesh%Nnodes),amesh%py(amesh%Nnodes),amesh%pz(amesh%Nnodes))
@@ -479,21 +467,19 @@ full_fault: do k = 1,qmesh%Ncells
    ! write(*,*) 'number of nodes', nnodes
    ! write(*,*) 'new maxval in cell....', maxval(amesh%cell)
 
+
+
    allocate(tri2quad(amesh%Nnodes))
    tri2quad = tmp_tri2quad(nodes(1:nnodes))
    ! set the values on the edge to zero  
    do i = 1,qmesh%Nnodes
       do k = i,qmesh%Nnodes
-         do j = 1,nx
-            if (edge_x(i,k,j) /= 0 ) then  ! edge array is not empty   
-               tri2quad(edge_x(i,k,j)) = 0
-            endif 
-         enddo
-         do j = 1,nz
-            if (edge_z(i,k,j) /= 0 ) then    ! edge array is not empty   
-               tri2quad(edge_z(i,k,j)) = 0
-            endif
-         enddo 
+         if (edge_x(i,k ,1) /= 0 ) then  ! edge array is not empty   
+            tri2quad(edge_x(i,k,:)) = 0
+         endif  
+         if (edge_z(i,k ,1) /= 0 ) then    ! edge array is not empty   
+            tri2quad(edge_z(i,k,:)) = 0
+         endif 
       enddo 
    enddo
 
@@ -505,8 +491,7 @@ type(mesh),intent(in) :: tmp
 integer, intent(in) :: q1,q2,q4,n1,n2,n3,n4
 integer,dimension(:,:,:),intent(inout) :: edge_x,edge_z
 integer,dimension(2,3),intent(out) :: cell
-integer :: pre_n1,pre_n2,pre_n4,id ,pre_n1a 
-! logical,intent(out) :: update 
+integer :: pre_n1,pre_n2,pre_n4,id 
 !
 !
 !        pre_n2
@@ -516,13 +501,9 @@ integer :: pre_n1,pre_n2,pre_n4,id ,pre_n1a
 ! -----.n1------------.n4
 !      | pre_n1
 !      |
-
-! update = .false.
 pre_n1 = check_edge(q1,q2,edge_z,tmp,n1) !left edge
 pre_n2 = check_edge(q1,q2,edge_z,tmp,n2) !left edge
 pre_n4 = check_edge(q1,q4,edge_x,tmp,n4) !bottom edge 
-pre_n1a = check_edge(q1,q4,edge_x,tmp,n1) !bottom edge 
-
 ! write(*,* ) 'bottom_left_corner'
 ! write(*,*) 'n1,n2,n3,n4',n1,n2,n3,n4
 ! write (*,*) 'n1:     ',tmp%px(n1),tmp%py(n1),tmp%pz(n1)
@@ -547,116 +528,29 @@ if ((pre_n1==0).and.(pre_n2==0).and.(pre_n4==0)) then ! all new nodes
 
    edge_x(q4,q1,id+1) = n4
    edge_x(q1,q4,id+1) = n4
-   ! update = .true.
-elseif ((pre_n1==0).and.(pre_n2==0).and.(pre_n4/=0)) then ! left side not present  
-   cell(1,:) = (/ n1, pre_n4, n3/)
-   cell(2,:) = (/ n1, n3, n2/)
-!update bottom edge 
-   id = find_empty_position(edge_z(q1,q2,:)) ! left edge 
-   edge_z(q2,q1,id) = n1
-   edge_z(q1,q2,id) = n1
-
-   edge_z(q2,q1,id+1) = n2
-   edge_z(q1,q2,id+1) = n2
-! check if corner point is missing from edge_x 
-
-   pre_n1a = check_edge(q1,q4,edge_x,tmp,n1) !bottom edge 
-   if (pre_n1a == 0) then 
-      id = find_empty_position(edge_x(q1,q4,:))  ! bottom edge 
-      edge_x(q4,q1,id) = n1
-      edge_x(q1,q4,id) = n1
-   endif 
-   ! update = .true.
 
 elseif ((pre_n1/=0).and.(pre_n2/=0).and.(pre_n4==0)) then ! left side already exists 
    cell(1,:) = (/ pre_n1, n4, n3/)
    cell(2,:) = (/ pre_n1, n3, pre_n2/)
 !update bottom edge 
    id = find_empty_position(edge_x(q1,q4,:))
-   if (pre_n1a == 0) then 
-      edge_x(q4,q1,id) = n1
-      edge_x(q1,q4,id) = n1
+   edge_x(q4,q1,id) = n1
+   edge_x(q1,q4,id) = n1
 
-      edge_x(q4,q1,id+1) = n4
-      edge_x(q1,q4,id+1) = n4
-   else 
-      edge_x(q4,q1,id) = n4
-      edge_x(q1,q4,id) = n4  
-   endif 
-! elseif ((pre_n1a == 0).and.(pre_n2 /= 0).and.(pre_n4 /=0)) then ! bottom already exists  ! not sure if this is possible
-!    cell(1,:) = (/ n1, pre_n4, n3/)
-!    cell(2,:) = (/ n1, n3, pre_n2/)
+   edge_x(q4,q1,id+1) = n4
+   edge_x(q1,q4,id+1) = n4
 
-!    write(*,*) 'this happens.....'
-!    id = find_empty_position(edge_x(q1,q4,:))
-!    edge_x(q4,q1,id) = n1
-!    edge_x(q1,q4,id) = n1
-
-!    ! edge_x(q4,q1,id+1) = n4
-!    ! edge_x(q1,q4,id+1) = n4
-
-elseif ((pre_n1 /= 0).and.(pre_n2 == 0).and.(pre_n4 /=0)) then ! bottom already exists  ! not sure if this is possible
+elseif ((pre_n1 /= 0).and.(pre_n2 == 0).and.(pre_n4 /=0)) then ! bottom already exists 
    cell(1,:) = (/ pre_n1, pre_n4, n3/)
    cell(2,:) = (/ pre_n1, n3, n2/)
 
 ! update left edge 
    id = find_empty_position(edge_z(q1,q2,:))
-   edge_z(q2,q1,id) = n2
-   edge_z(q1,q2,id) = n2
-   ! update = .true.
-
-elseif ((pre_n1 == 0).and.(pre_n2 /= 0).and.(pre_n4 /= 0)) then ! approaching corner NEW
-   cell(1,:) = (/ n1, pre_n4, n3/)
-   cell(2,:) = (/ n1, n3, pre_n2/)
-
-! update left edge 
-   id = find_empty_position(edge_z(q1,q2,:))
    edge_z(q2,q1,id) = n1
    edge_z(q1,q2,id) = n1
 
-   if (pre_n1a == 0) then 
-      id = find_empty_position(edge_x(q1,q4,:))  ! bottom edge 
-      edge_x(q4,q1,id) = n1
-      edge_x(q1,q4,id) = n1
-   endif 
-   ! edge_z(q2,q1,id+1) = n4
-   ! edge_z(q1,q2,id+1) = n4
-   ! update = .true.
-
-elseif ((pre_n1 == 0).and.(pre_n2 /= 0).and.(pre_n4 == 0)) then ! just corner missing NEW
-   cell(1,:) = (/ n1, n4, n3/)
-   cell(2,:) = (/ n1, n3, pre_n2/)
-
-! update left edge 
-   id = find_empty_position(edge_z(q1,q2,:))
-   edge_z(q2,q1,id) = n1
-   edge_z(q1,q2,id) = n1
-
-   id = find_empty_position(edge_x(q1,q4,:))  ! bottom edge 
-   if (pre_n1a == 0) then 
-      edge_x(q4,q1,id) = n1
-      edge_x(q1,q4,id) = n1
-
-   !    edge_x(q2,q1,id+1) = n4
-   !    edge_x(q1,q2,id+1) = n4
-
-   ! else
-   !    edge_x(q2,q1,id) = n4
-   !    edge_x(q1,q2,id) = n4
-   endif 
-   ! update = .true.
-
-elseif ((pre_n1a == 0).and.(pre_n2 /= 0).and.(pre_n4 == 0)) then ! bottom edge  missing NEW
-   cell(1,:) = (/ n1, n4, n3/)
-   cell(2,:) = (/ n1, n3, pre_n2/)
-
-   id = find_empty_position(edge_x(q1,q4,:))  ! bottom edge 
-   edge_x(q4,q1,id) = n1
-   edge_x(q1,q4,id) = n1
-
-   edge_x(q2,q1,id+1) = n4
-   edge_x(q1,q2,id+1) = n4
-   ! update = .true.
+   edge_z(q2,q1,id+1) = n2
+   edge_z(q1,q2,id+1) = n2
 
 elseif ((pre_n1/=0).and.(pre_n2==0).and.(pre_n4 ==0)) then ! bottom corner pre-exists (I don't think we ever reach this condition)
    cell(1,:) = (/ pre_n1, n4, n3/)
@@ -664,19 +558,16 @@ elseif ((pre_n1/=0).and.(pre_n2==0).and.(pre_n4 ==0)) then ! bottom corner pre-e
 
 ! add corner to both edges 
    id = find_empty_position(edge_z(q1,q2,:))
-   edge_z(q2,q1,id) = n2
-   edge_z(q1,q2,id) = n2
+   edge_z(q2,q1,id) = n1
+   edge_z(q1,q2,id) = n1
 
-   id = find_empty_position(edge_x(q1,q4,:))  ! bottom edge 
-   edge_x(q2,q1,id) = n4
-   edge_x(q1,q2,id) = n4
-   ! update = .true.
+   ! id = find_empty_position(edge_x)  !remove as we haven't tested this 
+   ! edge_z(q4,q1,id) = n1
+   ! edge_z(q1,q4,id) = n1
 
 elseif ((pre_n1 /= 0).and.(pre_n2/=0).and.(pre_n4 /=0)) then ! all sides defined    
    cell(1,:) = (/ pre_n1, pre_n4, n3/)
    cell(2,:) = (/ pre_n1, n3, pre_n2/)   
-   ! update = .true.
-
 endif
 return
 end subroutine  bottom_left_corner
@@ -686,7 +577,7 @@ type(mesh),intent(in) :: tmp
 integer, intent(in) :: q1,q3,q4,n1,n2,n3,n4
 integer,dimension(:,:,:),intent(inout) :: edge_x,edge_z
 integer,dimension(2,3),intent(out) :: cell
-integer :: pre_n1,pre_n3,pre_n4,pre_n4_a, id, pre_n4a
+integer :: pre_n1,pre_n3,pre_n4,pre_n4_a, id
 !      
 !                     |
 !                     |pre_n3
@@ -701,8 +592,6 @@ integer :: pre_n1,pre_n3,pre_n4,pre_n4_a, id, pre_n4a
 pre_n1 = check_edge(q1,q4,edge_x,tmp,n1) !bottom edge 
 pre_n3 = check_edge(q3,q4,edge_z,tmp,n3) ! right edge
 pre_n4 = check_edge(q3,q4,edge_z,tmp,n4) !right edge  
-pre_n4a = check_edge(q1,q4,edge_x,tmp,n4) !right edge , bottom 
-
 ! write(*,* ) 'bottom_right_corner'
 ! write(*,*) 'n1,n2,n3,n4',n1,n2,n3,n4
 ! write (*,*) 'n4:     ',tmp%px(n4),tmp%py(n4),tmp%pz(n4)
@@ -711,7 +600,7 @@ pre_n4a = check_edge(q1,q4,edge_x,tmp,n4) !right edge , bottom
 ! write(*,*) 'edge_z....',edge_z(q3,q4,:)
 
 cell = 0 
-if ((pre_n1==0).and.(pre_n3==0).and.(pre_n4==0)) then ! all new nodes (not ending up here in Gareth's mesh )
+if ((pre_n1==0).and.(pre_n3==0).and.(pre_n4==0)) then ! all new nodes 
    cell(1,:) = (/ n1, n4, n3/)
    cell(2,:) = (/ n1, n3, n2/)
 
@@ -746,53 +635,32 @@ elseif ((pre_n1==0).and.(pre_n3/=0).and.(pre_n4/=0)) then ! right side already l
    edge_x(q4,q1,id) = n1
    edge_x(q1,q4,id) = n1
 
-   !pre_n4_a = check_edge(q1,q4,edge_x,tmp,n4) ! we havent checked this point on other edge 
-   if (pre_n4a == 0) then 
+   pre_n4_a = check_edge(q1,q4,edge_x,tmp,n4) ! we havent checked this point on other edge 
+   if (pre_n4_a == 0) then 
       edge_x(q4,q1,id+1) = n4  
       edge_x(q1,q4,id+1) = n4
    endif 
-
-   ! write(*,*) 'end up here 1------------->',n1,n3,n4
-
-elseif ((pre_n1 /= 0).and.(pre_n3 == 0).and.(pre_n4 == 0)) then ! bottom already exists !!!!!!this is used all the time in Gareth's mesh!!! 
-
+elseif ((pre_n1 /= 0).and.(pre_n3 == 0).and.(pre_n4 ==0)) then ! bottom already exists 
+   cell(1,:) = (/ pre_n1, n4, n3/)
+   cell(2,:) = (/ pre_n1, n3, n2/)
 
    ! cell(1,:) = (/ n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
    ! cell(2,:) = (/ n2, n4, n3/)
+
 !add nodes to the right edge
+   id = find_empty_position(edge_z(q3,q4,:))  ! right edge 
+   edge_z(q3,q4,id) = n4
+   edge_z(q4,q3,id) = n4
 
+   edge_z(q3,q4,id+1) = n3
+   edge_z(q4,q3,id+1) = n3
 
-   if (pre_n4a == 0) then 
-      cell(1,:) = (/ pre_n1, n4, n3/)
-      cell(2,:) = (/ pre_n1, n3, n2/)
-
+  pre_n4_a = check_edge(q1,q4,edge_x,tmp,n4) ! we havent checked this point on other edge 
+   if (pre_n4_a == 0) then 
       id = find_empty_position(edge_x(q1,q4,:))   ! bottom edge 
       edge_x(q4,q1,id) = n4  
       edge_x(q1,q4,id) = n4
-
-      id = find_empty_position(edge_z(q3,q4,:))  ! right edge 
-      edge_z(q3,q4,id) = n4
-      edge_z(q4,q3,id) = n4
-
-      edge_z(q3,q4,id+1) = n3
-      edge_z(q4,q3,id+1) = n3
-
-   else 
-      cell(1,:) = (/ pre_n1, pre_n4a, n3/)
-      cell(2,:) = (/ pre_n1, n3, n2/)
-
-      id = find_empty_position(edge_z(q3,q4,:))  ! right edge 
-      edge_z(q3,q4,id) = pre_n4a
-      edge_z(q4,q3,id) = pre_n4a
-
-      edge_z(q3,q4,id+1) = n3
-      edge_z(q4,q3,id+1) = n3
-
-      ! write(*,*) 'pre_n4a == 0',q1,q4,id,n4
    endif 
-   ! write(*,*) 'bottom right corner'
-   ! write(*,*) 'update edge_z...', q3,q4,n3,n4
-   ! write(*,*) 'end up here 2------------->',n1,n3,n4
 
 elseif ((pre_n1==0).and.(pre_n3==0).and.(pre_n4 /= 0)) then ! bottom right corner pre-exists 
    cell(1,:) = (/ n1, pre_n4, n3/)
@@ -803,29 +671,10 @@ elseif ((pre_n1==0).and.(pre_n3==0).and.(pre_n4 /= 0)) then ! bottom right corne
 
 
    id = find_empty_position(edge_z(q3,q4,:))  ! right edge 
-   edge_z(q3,q4,id) = n3
-   edge_z(q4,q3,id) = n3
-   ! write(*,*) 'end up here 3------------->',n1,n3,n4
+   edge_z(q3,q4,id) = n4
+   edge_z(q4,q3,id) = n4
 
-elseif ((pre_n1==0).and.(pre_n3/=0).and.(pre_n4a == 0)) then ! bottom right corner pre-exists 
-   cell(1,:) = (/ n1, n4, pre_n3/)
-   cell(2,:) = (/ n1, pre_n3, n2/)
-
-   id = find_empty_position(edge_x(q1,q4,:))   ! bottom edge 
-   edge_x(q4,q1,id) = n1
-   edge_x(q1,q4,id) = n1
-
-   edge_x(q4,q1,id+1) = n4  !
-   edge_x(q1,q4,id+1) = n4
-
-   if(pre_n4 ==0) then 
-      id = find_empty_position(edge_z(q3,q4,:))  ! right edge 
-      edge_z(q3,q4,id) = n4
-      edge_z(q4,q3,id) = n4
-   endif 
-   ! write(*,*) 'end up here 4------------->',n1,n3,n4
-
-elseif ((pre_n1 /= 0).and.(pre_n3/=0).and.(pre_n4 /=0)) then ! all sides defined    (not going here in Gareth Mesh)
+elseif ((pre_n1 /= 0).and.(pre_n3/=0).and.(pre_n4 /=0)) then ! all sides defined    
    cell(1,:) = (/ pre_n1, pre_n4, pre_n3/)
    cell(2,:) = (/ pre_n1, pre_n3, n2/)   
 
@@ -898,30 +747,20 @@ if ((pre_n1==0).and.(pre_n2==0).and.(pre_n3==0)) then ! all new nodes
    edge_x(q2,q3,id+1) = n3  
    edge_x(q3,q2,id+1) = n3
 
-   write(*,*) 'end up here 1------------->',n1,n2,n3
 
-elseif ((pre_n1/=0).and.(pre_n2/=0).and.(pre_n3==0)) then ! left side already exists ! USED in Gareth's mesh
+elseif ((pre_n1/=0).and.(pre_n2/=0).and.(pre_n3==0)) then ! left side already exists 
    cell(1,:) = (/ pre_n1, n4, n3/)
    cell(2,:) = (/ pre_n1, n3, pre_n2/)
 
    ! cell(1,:) = (/ pre_n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
    ! cell(2,:) = (/ pre_n2, n4, n3/)
 
-   id = find_empty_position(edge_x(q2,q3,:))   ! update top edge    
-   !write(*,*) 'pre_n2_top',pre_n2_top
-   if (pre_n2_top == 0) then 
-      edge_x(q2,q3,id) = pre_n2 ! we haven't checked this value but if n1 is not in the list then neither should n3
-      edge_x(q3,q2,id) = pre_n2
+   id = find_empty_position(edge_x(q2,q3,:))   ! update top edge 
+   edge_x(q2,q3,id) = n2 ! we haven't checked this value but if n1 is not in the list then neither should n3
+   edge_x(q3,q2,id) = n2
 
-      edge_x(q2,q3,id+1) = n3  
-      edge_x(q3,q2,id+1) = n3
-   else 
-      edge_x(q2,q3,id) = n3  
-      edge_x(q3,q2,id) = n3
-   endif 
-
-   ! write(*,*)  'just updating edge_x', q2,q3,n3
-   ! write(*,*) 'end up here 2------------->',n1,n2,n3
+   edge_x(q2,q3,id+1) = n3  
+   edge_x(q3,q2,id+1) = n3
 
 elseif ((pre_n1 == 0).and.(pre_n2 /= 0).and.(pre_n3 /=0)) then ! top already exists 
    cell(1,:) = (/ n1, n4, pre_n3/)
@@ -936,10 +775,9 @@ elseif ((pre_n1 == 0).and.(pre_n2 /= 0).and.(pre_n3 /=0)) then ! top already exi
    edge_z(q1,q2,id) = n1
    edge_z(q2,q1,id) = n1
 
-   ! edge_z(q1,q2,id+1) = n2
-   ! edge_z(q2,q1,id+1) = n2
+   edge_z(q1,q2,id+1) = n2
+   edge_z(q2,q1,id+1) = n2
 
-   ! write(*,*) 'end up here 3------------->',n1,n2,n3
 
 elseif ((pre_n1 ==0).and.(pre_n2/=0).and.(pre_n3 ==0)) then ! top corner pre-exists 
    cell(1,:) = (/ n1, n4, n3/)
@@ -952,22 +790,18 @@ elseif ((pre_n1 ==0).and.(pre_n2/=0).and.(pre_n3 ==0)) then ! top corner pre-exi
    edge_z(q1,q2,id) = n1
    edge_z(q2,q1,id) = n1
 
-   id = find_empty_position(edge_x(q2,q3,:))   ! update top edge    
-   if (pre_n2_top == 0) then 
-      edge_x(q2,q3,id) = pre_n2  
-      edge_x(q3,q2,id) = pre_n2
+   id = find_empty_position(edge_x(q2,q3,:))   ! top edge 
+   edge_x(q2,q3,id) = n3  
+   edge_x(q3,q2,id) = n3
 
-      edge_x(q2,q3,id+1) = n3  
-      edge_x(q3,q2,id+1) = n3
-   else
-      edge_x(q2,q3,id) = n3  
-      edge_x(q3,q2,id) = n3
-   endif
+elseif((pre_n1 /=0).and.(pre_n2/=0).and.(pre_n3 /=0)) then ! all sides already defined  
+   cell(1,:) = (/ pre_n1, n4, pre_n3/)
+   cell(2,:) = (/ pre_n1, pre_n3, pre_n2/)   
 
-   ! write(*,*) 'end up here 4------------->',n1,n2,n3
+   ! cell(1,:) = (/ pre_n2, pre_n1, n4/)  !use this orientation so that slipping area can be defined correctly
+   ! cell(2,:) = (/ pre_n2, n4, pre_n3/)
 
-
-elseif((pre_n1 /=0).and.(pre_n2==0).and.(pre_n3 ==0)) then ! left bottom point pre-exists   USED IN GARETH'S MESH
+elseif((pre_n1 /=0).and.(pre_n2==0).and.(pre_n3 ==0)) then ! left bottom point pre-exists 
    cell(1,:) = (/ pre_n1, n4, n3/)
    cell(2,:) = (/ pre_n1, n3, n2/)
 
@@ -981,26 +815,11 @@ elseif((pre_n1 /=0).and.(pre_n2==0).and.(pre_n3 ==0)) then ! left bottom point p
    edge_z(q2,q1,id) = n2
 
    id = find_empty_position(edge_x(q2,q3,:))   ! top edge 
+   edge_x(q2,q3,id) = n2 ! we haven't checked this value but if n1 is not in the list then neither should n3
+   edge_x(q3,q2,id) = n2
 
-      ! write(*,*) 'pre_n2_top',pre_n2_top
-   if (pre_n2_top == 0) then 
-      edge_x(q2,q3,id) = n2 ! 
-      edge_x(q3,q2,id) = n2
-
-      edge_x(q2,q3,id+1) = n3  
-      edge_x(q3,q2,id+1) = n3
-   else 
-      edge_x(q2,q3,id) = n3  
-      edge_x(q3,q2,id) = n3
-   endif 
-   ! edge_x(q2,q3,id) = n2 ! we haven't checked this value but if n1 is not in the list then neither should n3
-   ! edge_x(q3,q2,id) = n2
-
-   ! edge_x(q2,q3,id+1) = n3  
-   ! edge_x(q3,q2,id+1) = n3
-   ! write(*,*)  'update edge_x .....', q2,q3,n2,n3
-   ! write(*,*)  '....and edge_z ', q1,q2,n2
-   ! write(*,*) 'end up here 5------------->',n1,n2,n3
+   edge_x(q2,q3,id+1) = n3  
+   edge_x(q3,q2,id+1) = n3
 
 
 elseif((pre_n1 ==0).and.(pre_n2==0).and.(pre_n3 /=0)) then ! top right point pre-exists 
@@ -1026,7 +845,6 @@ elseif((pre_n1 ==0).and.(pre_n2==0).and.(pre_n3 /=0)) then ! top right point pre
       edge_x(q2,q3,id) = n3  
       edge_x(q3,q2,id) = n3
    endif 
-   ! write(*,*) 'end up here 6------------->',n1,n2,n3
 
 
 elseif((pre_n1 /=0).and.(pre_n2==0).and.(pre_n3 /=0)) then ! corner point not defined pre-exists 
@@ -1052,13 +870,7 @@ elseif((pre_n1 /=0).and.(pre_n2==0).and.(pre_n3 /=0)) then ! corner point not de
       edge_z(q1,q2,id) = n2
       edge_z(q2,q1,id) = n2
    endif 
-   ! write(*,*) 'end up here 7------------->',n1,n2,n3
 
-   elseif((pre_n1 /=0).and.(pre_n2/=0).and.(pre_n3 /=0)) then ! all pre-exist  
-        cell(1,:) = (/ pre_n1, n4, pre_n3/)
-        cell(2,:) = (/ pre_n1, pre_n3, pre_n2/) 
-   ! write(*,*) 'end up here 8------------->',n1,n2,n3
- 
 endif
 
 if (cell(1,1) == 0)  then 
@@ -1125,7 +937,6 @@ if ((pre_n2==0).and.(pre_n3==0).and.(pre_n4==0)) then ! all new nodes
       edge_x(q2,q3,id+1) = n3  
       edge_x(q3,q2,id+1) = n3
    endif 
-   ! write(*,*) 'end up here 1------------->',n2,n3,n4
 
 elseif ((pre_n2 ==0).and.(pre_n3/=0).and.(pre_n4/=0)) then ! right side already exists 
 
@@ -1140,31 +951,17 @@ elseif ((pre_n2 ==0).and.(pre_n3/=0).and.(pre_n4/=0)) then ! right side already 
       edge_x(q2,q3,id+1) = pre_n3 
       edge_x(q3,q2,id+1) = pre_n3
    endif 
-   ! write(*,*) 'end up here 2------------->',n2,n3,n4
 
-elseif ((pre_n2 ==0).and.(pre_n3_top /=0).and.(pre_n4/=0)) then ! right side already exists 
-
-   cell(1,:) = (/ n1, pre_n4, pre_n3_top/)
-   cell(2,:) = (/ n1, pre_n3_top, n2/)
-
-   id = find_empty_position(edge_x(q2,q3,:))   ! update top edge 
-   edge_x(q2,q3,id) = n2 
-   edge_x(q3,q2,id) = n2
-
-   ! edge_x(q2,q3,id+1) = n3 
-   ! edge_x(q3,q2,id+1) = n3
-   
    ! id = find_empty_position(edge_z(q3,q4,:))  ! update right edge 
    ! edge_z(q3,q4,id) = n4
    ! edge_z(q4,q3,id) = n4
 
    ! edge_z(q3,q4,id+1) = n3
    ! edge_z(q4,q3,id+1) = n3
-   ! write(*,*) 'end up here 3------------->',n2,n3,n4
 
 
 elseif ((pre_n2 == 0).and.(pre_n3 /= 0).and.(pre_n4 ==0)) then ! top already exists 
-   ! write(*,*) 'got here',q2,q3
+   write(*,*) 'got here',q2,q3
    cell(1,:) = (/ n1, n4, pre_n3/)
    cell(2,:) = (/ n1, pre_n3, pre_n2/)
 
@@ -1182,10 +979,6 @@ elseif ((pre_n2 == 0).and.(pre_n3 /= 0).and.(pre_n4 ==0)) then ! top already exi
    id = find_empty_position(edge_z(q3,q4,:))  ! update right edge 
    edge_z(q3,q4,id) = n4
    edge_z(q4,q3,id) = n4
-
-   ! write(*,*) 'end up here 4------------->',n2,n3,n4
-
-
 ! elseif ((pre_n2 == 0).and.(pre_n3/=0).and.(pre_n4 ==0)) then ! right corner pre-exists 
 !    cell(1,:) = (/ n1, n4, pre_n3/)
 !    cell(2,:) = (/ n1, pre_n3, n2/)
@@ -1204,13 +997,12 @@ elseif ((pre_n2 == 0).and.(pre_n3 /= 0).and.(pre_n4 ==0)) then ! top already exi
    ! edge_z(q3,q4,id) = n4
    ! edge_z(q4,q3,id) = n4
 
-! elseif ((pre_n2 /= 0).and.(pre_n3/=0).and.(pre_n4 /=0)) then ! all sides defined    
-!    cell(1,:) = (/ n1, pre_n4, pre_n3/)
-!    cell(2,:) = (/ n1, pre_n3, pre_n2/)
+elseif ((pre_n2 /= 0).and.(pre_n3/=0).and.(pre_n4 /=0)) then ! all sides defined    
+   cell(1,:) = (/ n1, pre_n4, pre_n3/)
+   cell(2,:) = (/ n1, pre_n3, pre_n2/)
 
-!    write(*,*) 'end up here 5------------->',n2,n3,n4
 
-elseif ((pre_n2 /= 0).and.(pre_n3==0).and.(pre_n4 /=0)) then ! corner not saved   -> this is used all the time in Gareth's mesh!!!
+elseif ((pre_n2 /= 0).and.(pre_n3==0).and.(pre_n4 /=0)) then ! corner not saved   
 
    if(pre_n3_top /= 0) then ! use value from other edge 
       cell(1,:) = (/ n1, pre_n4, pre_n3_top/)
@@ -1219,9 +1011,8 @@ elseif ((pre_n2 /= 0).and.(pre_n3==0).and.(pre_n4 /=0)) then ! corner not saved 
       id = find_empty_position(edge_z(q3,q4,:))  ! update right edge 
       edge_z(q3,q4,id) = pre_n3_top
       edge_z(q4,q3,id) = pre_n3_top
-      ! write(*,*) 'end up here 1st option------------->',q2,q3,pre_n3_top
-
-   else   !if there is no value on the other edge take new node -> use this everytime 
+   
+   else   !if there is no value on the other edge take new node 
       cell(1,:) = (/ n1, pre_n4, n3/)
       cell(2,:) = (/ n1, n3, pre_n2/)
    
@@ -1232,17 +1023,8 @@ elseif ((pre_n2 /= 0).and.(pre_n3==0).and.(pre_n4 /=0)) then ! corner not saved 
       id = find_empty_position(edge_x(q2,q3,:))   ! update top edge corner
       edge_x(q2,q3,id) = n3 
       edge_x(q3,q2,id) = n3
-      ! write(*,*)    'top_right_corner'
-      ! write(*,*) 'end up here 2nd option------------->',q2,q3,n3
 
    endif 
-   ! write(*,*) 'end up here 6------------->',n2,n3,n4
-
-elseif ((pre_n2 /= 0).and.(pre_n3/=0).and.(pre_n4 /=0)) then ! corner not saved   
-      cell(1,:) = (/ n1, pre_n4, pre_n3/)
-      cell(2,:) = (/ n1, pre_n3, pre_n2/)
-   ! write(*,*) 'end up here 7------------->',n2,n3,n4
-
 endif
 
 if (cell(1,1) == 0) then 
@@ -1766,8 +1548,6 @@ do i = 1,nquad
         enddo 
     enddo
 enddo 
-
-! write(*,*) 'clockewise or not', check_anticlockwise(qmesh%px(qmesh%cell(4,:)),qmesh%px(qmesh%cell(4,:)),4) 
 
 return
 end subroutine create_quad_mesh
