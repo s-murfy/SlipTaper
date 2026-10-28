@@ -1,0 +1,13 @@
+# Fortran build artefacts
+*.o
+*.mod
+*.x
+
+# Program output (regenerate by running taper.x in example/)
+slip_taper_*.vtk
+slip_taper_*_hysea.dat
+
+# Notebook / editor / OS
+.ipynb_checkpoints/
+.vscode/
+.DS_Store
