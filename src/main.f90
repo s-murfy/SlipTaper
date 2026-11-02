@@ -12,7 +12,6 @@ real(pr),allocatable,dimension(:,:) :: fault_lon,fault_lat,fault_z
 real(pr),allocatable,dimension(:,:) :: quad_lon,quad_lat,quad_z,quad_x,quad_y
 integer,allocatable,dimension(:,:,:) :: edge_x,edge_z
 integer,allocatable,dimension(:):: tri2quad
-! real(pr),allocatable,dimension(:):: bc_dist,edge_dist,corner_dist
 real(pr),allocatable, dimension(:) :: slipping_dist
 real(pr),allocatable,dimension(:,:):: bc_dist
 real(pr) :: accuracy
@@ -52,8 +51,6 @@ if (output_level >= 2) write(*,*) 'new slipping cell id............',slipping_ce
 allocate(quad_x(nquad,4),quad_y(nquad,4))
 
 ! set first point as the reference point 
-! latref= quad_lat(1,1) 
-! lonref=quad_lon(1,1)
 latref = sum(quad_lat(:,1))/nquad
 lonref = sum(quad_lon(:,1))/nquad 
 
@@ -84,18 +81,11 @@ call create_tri_mesh(qmesh,nx,nz,amesh,edge_x,edge_z,tri2quad,output_level)
 
 ! ! calculate distance between all points on mesh
 if (output_level >= 2) write(*,*) 'Calculate border distances '
-! call boundary_dist(slipping_cell,qmesh,amesh,edge_x,edge_z,surface,bc_dist,edge_dist,corner_dist,edge_exist)
 call boundary_distV2(qmesh,amesh,edge_x,edge_z,surface,bc_dist)
 
 ! ! calc tapered slip 
-!call tapered_slip(amesh,dist,central_dist,slip)
 if (output_level >= 2) write(*,*) 'calculate slip on fault...'
-! call add_slip(slipping_cell,qmesh,amesh,edge_x,edge_z,tri2quad,bc_dist,edge_dist,corner_dist,edge_exist,taper_dist,slip)
 call add_slipV2(slipping_cell,qmesh,amesh,edge_x,edge_z,bc_dist,taper_dist,slip)
-
-
-! ! calculate tapered slip and transform mesh to rectilinear cells 
-! call tapered_slip_rectangle(amesh,dist,central_dist,rect_mesh,rect_slip)
 
 ! ! output slip in utm coordinates 
 if (output_level == 2) write(*,*) 'output slip'
@@ -105,12 +95,7 @@ slipping_dist = bc_dist(slipping_cell,:)
 if (output_level >= 1) then 
         write(out_file,'(a15,i3.3)') 'slip_taper_utm_',original_slipping_cell
         ! call write_out(amesh,bc_dist,slip,out_file)     ! writing out distance from boundary 
-        
-
         call write_out(amesh,slipping_dist,slip,out_file)   ! writing out corner distance 
-
-
-
 
         if (output_level == 2) write(*,*) 'output original quadrangles'
 !call write_out(amesh,central_dist,slip,out_file)
@@ -122,15 +107,6 @@ endif
 ! ! convert mesht to lat/lon
 if (output_level >= 2) write(*,*) 'convert to lat/lon'
 call convert2geo(amesh,latref,lonref,geomesh)
-
-
-! do i = 1,nquad
-!     do j = 1,4
-!                 call convgeoutm(lat_out,lon_out,latref,lonref,quad_x(i,j),quad_y(i,j),-1)
-!                 write(*,*) 'lat_out',lat_out,'long_out',lon_out
-!                 write(*,*) 'difference in lat/lon',quad_lat(i,j)-lat_out,quad_lon(i,j)-lon_out
-!     enddo 
-! enddo 
 
 if (output_level >= 2) write(*,*) 'output slip in lat/lon coordinates'
 
