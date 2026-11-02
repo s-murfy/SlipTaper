@@ -17,7 +17,7 @@ Output files contain a triangular mesh in geographical coordinates in vtk format
 
 ## Repository layout
 - `src/` : Fortran source and `makefile`.
-- `example/` : an example `input.txt`, quadrangle mesh files (`test_mesh.txt`, `puysegur2_*`, `southamerica_*`) and a notebook (`Mesh_CheckV2.ipynb`) for checking meshes.
+- `example/` : an example `input.txt`, quadrangle mesh files (`southamerica_quadrilateral_coords_order.dat`) and a notebook (`plot_slip_results.ipynb`) for checking meshes.
 
 ## Quick start
 ```bash
@@ -32,7 +32,7 @@ cd ../example
 The input uses Fortran namelists; lines starting with `#` are comments.
 
 ```
-&MESHFILE   name='test_mesh.txt' /
+&MESHFILE   name='southamerica_quadrilateral_coords_order.dat' /
 &MESHGRID   nx_cells=10, nz_cells=10, taper=15.d3 /
 &CELLCHOICE cell=144, surface_depth=-100.d0, rake=90.d0 /
 &OUTPUT     verbose=1 /
