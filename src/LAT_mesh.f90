@@ -29,6 +29,17 @@ end interface
 
 contains
 !###############################################################################
+subroutine mesh_order_error(where)
+! the triangle mesh could not be built for this set of quadrangles: stop with a message and a non-zero exit status
+character(len=*),intent(in) :: where
+write(*,*) 'ERROR in ',where
+write(*,*) 'The quadrangles around the chosen cell are not in an order or orientation that can be meshed.'
+write(*,*) 'Quadrangles must be listed one row (along strike) after another, each followed by its'
+write(*,*) 'along-strike neighbour, with nodes 1,4 on one edge and nodes 2,3 on the other edge.'
+write(*,*) 'See example/order_mesh.py'
+error stop 1
+end subroutine mesh_order_error
+!###############################################################################
 subroutine find_slipping_cells(slipping_cell,fault_mesh,quad_lon,quad_lat,quad_z,nquad,output_level)
 type(mesh),intent(in) :: fault_mesh
 integer,intent(inout) :: slipping_cell
@@ -106,6 +117,7 @@ integer :: qnode_1,qnode_2,qnode_3,qnode_4
 integer :: ex_up_count,ex_down_count,ez_left_count,ez_right_count 
 integer :: existing_node1,existing_node2,existing_node3,existing_node4
 logical :: bc,cell_updated 
+logical,allocatable,dimension(:,:) :: is_strike,is_dip
 integer,dimension(2,3) :: cell 
 real(pr),dimension(4) :: z,x,y
 real(pr) :: dw,dl,xs,ys,zs,xe,ye,ze
@@ -139,9 +151,34 @@ integer,intent(in) :: output_level
 !                |      i.--------.i+1      |
 !                |                          |
 !     quad_node_1.--------------------------. quad_node_4      
+!   
+!  deep edge 
 
+! an edge shared by two quadrangles must run along strike (nodes 1-4, 2-3) in both or down dip (1-2, 3-4) in both
+allocate(is_strike(qmesh%Nnodes,qmesh%Nnodes),is_dip(qmesh%Nnodes,qmesh%Nnodes))
+is_strike = .false.
+is_dip = .false.
+do k = 1,qmesh%Ncells
+   qnode_1 = qmesh%cell(k,1)
+   qnode_2 = qmesh%cell(k,2)
+   qnode_3 = qmesh%cell(k,3)
+   qnode_4 = qmesh%cell(k,4)
+   is_strike(qnode_1,qnode_4) = .true.
+   is_strike(qnode_4,qnode_1) = .true.
+   is_strike(qnode_2,qnode_3) = .true.
+   is_strike(qnode_3,qnode_2) = .true.
+   is_dip(qnode_1,qnode_2) = .true.
+   is_dip(qnode_2,qnode_1) = .true.
+   is_dip(qnode_3,qnode_4) = .true.
+   is_dip(qnode_4,qnode_3) = .true.
+enddo
+if (any(is_strike.and.is_dip)) then
+   write(*,*) 'ERROR: a quadrangle edge is along strike in one cell and down dip in its neighbour'
+   call mesh_order_error('create_tri_mesh (inconsistent node order in neighbouring quadrangles)')
+endif
+deallocate(is_strike,is_dip)
 
-! this array defines nodes on the edge of the quadranles 
+! this array defines nodes on the edge of the quadrangles 
 allocate(edge_x(qmesh%Nnodes,qmesh%Nnodes,nx),edge_z(qmesh%Nnodes,qmesh%Nnodes,nz))
 edge_x = 0
 edge_z = 0
@@ -223,7 +260,7 @@ full_fault: do k = 1,qmesh%Ncells
   !                         write(*,*) 'applying bottom_left_corner test using bottom edge........'
                            cell_updated = .true.
                            if ((any(cell(1,:) == 0)).or.(any(cell(2,:) == 0))) then 
-                               write(*,*) 'problem bottom_left_corner'
+                               call mesh_order_error('bottom_left_corner')
                                stop 
                            endif 
                            
@@ -234,7 +271,7 @@ full_fault: do k = 1,qmesh%Ncells
                            if ((any(cell(1,:) == 0)).or.(any(cell(2,:) == 0))) then 
                                write(*,*)  cell(1,:)
                                write(*,*)  cell(2,:)
-                               write(*,*) 'problem bottom_right_corner'
+                               call mesh_order_error('bottom_right_corner')
                                stop 
                            endif 
                      else  ! check the rest of the bottom edge 
@@ -242,7 +279,7 @@ full_fault: do k = 1,qmesh%Ncells
                            cell_updated = .true.
                        
                            if ((any(cell(1,:) == 0)).or.(any(cell(2,:) == 0))) then 
-                               write(*,*) 'problem bottom_edge'
+                               call mesh_order_error('bottom_edge')
                                stop 
                            endif 
                      endif 
@@ -256,21 +293,21 @@ full_fault: do k = 1,qmesh%Ncells
                            cell_updated = .true.
 !                           write(*,*) 'applying top_left_corner'
                            if ((any(cell(1,:) == 0)).or.(any(cell(2,:) == 0))) then 
-                              write(*,*) 'problem top_left_corner'
+                              call mesh_order_error('top_left_corner')
                               stop
                            endif 
                      elseif (i==id_end-1) then         !check top right corner 
                            call top_right_corner(qnode_2,qnode_3,qnode_4,i,i+nx,i+nx+1,i+1,tmp,edge_x,edge_z,cell)
                            cell_updated = .true.
                            if ((any(cell(1,:) == 0)).or.(any(cell(2,:) == 0))) then 
-                              write(*,*) 'problem top_right_corner'
+                              call mesh_order_error('top_right_corner')
                               stop
                            endif 
                      else 
                            call top_edge(qnode_2,qnode_3,i,i+nx,i+nx+1,i+1,tmp,edge_x,cell) 
                            cell_updated = .true.
                            if ((any(cell(1,:) == 0)).or.(any(cell(2,:) == 0))) then 
-                              write(*,*) 'problem top_edge'
+                              call mesh_order_error('top_edge')
                               stop
                            endif 
                      endif 
@@ -282,7 +319,7 @@ full_fault: do k = 1,qmesh%Ncells
                      bc = .true.
                      call left_edge(qnode_1,qnode_2,i,i+nx,i+nx+1,i+1,tmp,edge_z,cell) 
                       if ((any(cell(1,:) == 0)).or.(any(cell(2,:) == 0))) then 
-                              write(*,*) 'problem left_edge'
+                              call mesh_order_error('left_edge')
                               stop
                      endif 
                      amesh%cell(c_count,:) = cell(1,:)
@@ -294,7 +331,7 @@ full_fault: do k = 1,qmesh%Ncells
                      ! write(*,*) 'right boundary start'
                       call  right_edge(qnode_3,qnode_4,i,i+nx,i+nx+1,i+1,tmp,edge_z,cell)
                      if ((any(cell(1,:) == 0)).or.(any(cell(2,:) == 0))) then 
-                           write(*,*) 'problem right_edge'
+                           call mesh_order_error('right_edge')
                            stop 
                      endif 
                                            
@@ -474,6 +511,10 @@ full_fault: do k = 1,qmesh%Ncells
    ! set the values on the edge to zero  
    do i = 1,qmesh%Nnodes
       do k = i,qmesh%Nnodes
+         if ((edge_x(i,k,1) /= 0).and.(any(edge_x(i,k,:) == 0))) &
+            call mesh_order_error('create_tri_mesh: edge along strike only partly filled')
+         if ((edge_z(i,k,1) /= 0).and.(any(edge_z(i,k,:) == 0))) &
+            call mesh_order_error('create_tri_mesh: edge down dip only partly filled')
          if (edge_x(i,k ,1) /= 0 ) then  ! edge array is not empty   
             tri2quad(edge_x(i,k,:)) = 0
          endif  
@@ -501,6 +542,7 @@ integer :: pre_n1,pre_n2,pre_n4,id
 ! -----.n1------------.n4
 !      | pre_n1
 !      |
+cell = 0   ! so that unhandled cases are caught by the caller
 pre_n1 = check_edge(q1,q2,edge_z,tmp,n1) !left edge
 pre_n2 = check_edge(q1,q2,edge_z,tmp,n2) !left edge
 pre_n4 = check_edge(q1,q4,edge_x,tmp,n4) !bottom edge 
@@ -874,7 +916,7 @@ elseif((pre_n1 /=0).and.(pre_n2==0).and.(pre_n3 /=0)) then ! corner point not de
 endif
 
 if (cell(1,1) == 0)  then 
-   write(*,*) 'problem top_left_corner'
+   call mesh_order_error('top_left_corner')
    write(*,*) n1,n2,n3,n4
    write(*,*) pre_n1,pre_n2,pre_n3
    stop
@@ -1028,7 +1070,7 @@ elseif ((pre_n2 /= 0).and.(pre_n3==0).and.(pre_n4 /=0)) then ! corner not saved
 endif
 
 if (cell(1,1) == 0) then 
-   write(*,*) 'problem top_right_corner'
+   call mesh_order_error('top_right_corner')
    write(*,*) n1,n2,n3,n4
    write(*,*) pre_n2,pre_n3,pre_n4   
    stop

@@ -1,5 +1,6 @@
 # Input file for Tapered Slip
-&MESHFILE name= 'test_mesh.txt'   / 
+&MESHFILE name= 'southamerica_mod_quadrilateral_coords.dat'   / 
+#### &  MESHFILE name= 'test_mesh.txt'   / 
 
 # Define the discretization along the strike (nx_cells) and downdip (nz_cells)
 #  taper : this is the distance in metres that the slip taper is applied 
