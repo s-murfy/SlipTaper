@@ -141,7 +141,7 @@ enddo
 
 ! find value along slab edge if it exits
 there_is_slab_edge = .false.
-slip_near_boundary = 0.6   ! this is a preset value that should not be used if 
+slip_near_boundary = 0.6_pr   ! this is a preset value that should not be used if 
 do i = 1,amesh%ncells  
     query_nodes = amesh%cell(i,:)
     is_edge_node = check_slab_edge(query_nodes,slipping_cell,edge_x,edge_z,qmesh)! check if cell has a node on the edge 
@@ -163,7 +163,7 @@ do i = 1,amesh%ncells
 enddo 
 
 ! write(*,*) 'slip near boundary edge', slip_near_boundary
-slip_near_boundary = 0.6   ! set slip at boundar to 0.6 
+slip_near_boundary = 0.6_pr   ! set slip at boundar to 0.6 
 ! check that slip when combined gives a value 
 i = 1
 do while (i<amesh%ncells)

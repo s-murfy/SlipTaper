@@ -42,13 +42,21 @@ The input uses Fortran namelists; lines starting with `#` are comments.
 |---|---|---|
 | `MESHFILE` | `name` | Quadrangle mesh file (see below). |
 | `MESHGRID` | `nx_cells`, `nz_cells` | Number of subdivisions along strike and down dip within each quadrangle. |
-| `MESHGRID` | `taper` | Distance (m) over which slip tapers to zero. |
+| `MESHGRID` | `taper` | Width (m) of the linear slip taper, centred on each quadrangle edge: half of the width lies inside the quadrangle and half outside it (see below). |
 | `CELLCHOICE` | `cell` | Quadrangle (line number in the mesh file) the slip is centred on. |
 | `CELLCHOICE` | `surface_depth` | If a node on a quadrangle edge is shallower than this value (m), that edge is treated as the surface and no taper is applied there. |
 | `CELLCHOICE` | `rake` | Rake (degrees) written to the HySEA file. |
 | `OUTPUT` | `verbose` | 0: final lon/lat outputs only; 1: also intermediate UTM vtk files; 2: also print progress to screen. |
 
 The four namelists must appear in this order.
+
+### How the slip is calculated
+For each quadrangle in the patch (the chosen cell and the cells touching it) the slip ramps linearly with the distance `d` from that quadrangle's edges, measured across the triangular mesh:
+
+- inside the quadrangle the slip is `0.5 + d/taper`, outside it is `0.5 - d/taper`, limited to the range 0 to 1. The slip is therefore 0.5 on the edge, reaches 1 half a taper width inside and 0 half a taper width outside.
+- the slip of the chosen cell is then divided by the sum of the slip of all quadrangles at that triangle. Where cells overlap the patches therefore add up to 1, so the value at a shared edge is 0.5 only when two cells contribute equally; it depends on the cells that overlap there.
+- an edge treated as the surface (`surface_depth`) has no taper.
+- along the outer edge of the whole mesh there is no neighbouring cell to take over, so the total is set to 0.6 instead of 1 (hard-coded as `slip_near_boundary` in `add_slipV2`): the summed slip along that edge is 0.6 of the interior value.
 
 ## Mesh file format
 One quadrangle per line, with its four corner nodes given in order as

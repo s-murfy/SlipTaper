@@ -1,8 +1,9 @@
 # Input file for Tapered Slip
-&MESHFILE name= 'southamerica_mod_quadrilateral_coords_ordered.dat'   / 
+&MESHFILE name= 'southamerica_quadrilateral_coords_ordered.dat'   / 
 
 # Define the discretization along the strike (nx_cells) and downdip (nz_cells)
-#  taper : this is the distance in metres that the slip taper is applied 
+#  taper : width in metres of the linear slip taper. The taper is centred on each edge of the
+#          quadrangle: half of the width lies inside the quadrangle and half outside it
 #
 &MESHGRID nx_cells=10, nz_cells=10, taper=15.d3 /
 
