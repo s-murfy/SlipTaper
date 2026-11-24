@@ -1,23 +1,32 @@
 # SlipTaper
-Code to discretise a quadrangle into triangles producing a smooth slip distribution that tapers to zero at boundary.
+Code to discretise a quadrangle into triangles producing a smooth slip distribution that tapers to zero beyond the edges of the chosen quadrangle (see [How the slip is calculated](#how-the-slip-is-calculated)).
 
 ## Description 
-``SlipTaper`` take a coarse quadrangles mesh, descritizes it to a higher specified resolution of triangles. A smooth slip distribution is then appiled to the specified quadrangle which is smoothly tapered into adjoining quadrangles which have also been meshed at the given higher resolution. Distances across the mesh are calculated using [Trilateration] while the coversion between geographical coorindates and UTM are performed with [GeoREF]
+``SlipTaper`` takes a coarse quadrangle mesh and discretises it to a higher, specified resolution of triangles. A smooth slip distribution is then applied to the specified quadrangle which is smoothly tapered into adjoining quadrangles which have also been meshed at the given higher resolution. Distances across the mesh are calculated using [Trilateration] while the conversion between geographical coordinates and UTM are performed with [GeoREF]
 
 
 ## How to compile and run
-Compliation requires a fortran compiler. If using `gfortran` open the `makefile` comment line 4 (FC=ifx) and uncomment line 3 (FC=gfortran). 
-To compile by typing ``make `` to create the execuitable `taper.x`. To run type `.\taper.x` in the folder containing the `input.txt` and quadrangle mesh file.  
+Compilation requires `make` and a Fortran compiler. The `makefile` in `src/` uses `gfortran` by default; to use the Intel compiler instead, change the `FC` line at the top of the `makefile` to `FC = ifx`.
 
-### Input files 
-Two input files are required by the code. The first is a file called ``input.txt`` in this file general parameters for SlipTaper are provided (e.g. number of subcells within quadrangles, name of quadrangle file, length of taper, etc).  The second is the name of the coarse quadrangle mesh file that will be used to calculate the finer triangular grid onto. The mesh file will contain the nodes of the quadrangles for each cell on each line in geographical coordinates. 
+To compile, type `make` in `src/` to create the executable `taper.x`. Then run it from the folder containing `input.txt` and the quadrangle mesh file:
+
+- Linux / macOS: `../src/taper.x` (from `example/`)
+- Windows: the makefile is written for Unix-style tools and has not been tested natively on Windows. Either use WSL (then follow the Linux instructions) or install `make` and `gfortran` through MSYS2/MinGW, build in that shell, and run `../src/taper.x` from `example/` in that shell. (The makefile names the executable `taper.x` on every platform.)
+
+### Input files
+Two input files are required:
+
+1. `input.txt`, which holds the general parameters (number of sub-cells per quadrangle, taper width, chosen cell, name of the mesh file, etc.); see [Input file](#input-file-inputtxt).
+2. The coarse quadrangle mesh file named in `input.txt`. It has one quadrangle per line, given as the longitude, latitude and depth of its four nodes, and its cells must be in a specific order (see [Mesh file format](#mesh-file-format); `example/order_mesh.py` puts a mesh into that order).
+
+Example files for both are in `example/`. The code is mainly intended for meshes made with [ptha], whose mesh generation has also been ported to Python in [subduction-ptha-python].
 
 ### Output file 
 Output files contain a triangular mesh in geographical coordinates in vtk format which can be opened using *Paraview* and as txt file that can be read by *HySEA*. Setting the verbose in the input.txt to 1 will generate vtk files containing the intermediate meshes in UTM coordinates. All output files contain a number which corresponds to the quadrangle from the original mesh which the slip is centred on. 
 
 ## Repository layout
 - `src/` : Fortran source and `makefile`.
-- `example/` : an example `input.txt`, quadrangle mesh files (`southamerica_quadrilateral_coords_order.dat`) and a notebook (`plot_slip_results.ipynb`) for checking meshes.
+- `example/` : an example `input.txt`, quadrangle mesh files (`southamerica_quadrilateral_coords_ordered.dat`), `order_mesh.py` for ordering a mesh, and a notebook (`plot_slip_results.ipynb`) that plots the slip of individual patches and their sum.
 
 ## Quick start
 ```bash
@@ -32,7 +41,7 @@ cd ../example
 The input uses Fortran namelists; lines starting with `#` are comments.
 
 ```
-&MESHFILE   name='southamerica_quadrilateral_coords_order.dat' /
+&MESHFILE   name='southamerica_quadrilateral_coords_ordered.dat' /
 &MESHGRID   nx_cells=10, nz_cells=10, taper=15.d3 /
 &CELLCHOICE cell=144, surface_depth=-100.d0, rake=90.d0 /
 &OUTPUT     verbose=1 /
@@ -99,7 +108,8 @@ To produce a slip distribution for a different quadrangle, change `cell` in `inp
 
 [Trilateration]: https://github.com/andherit/trilateration
 [GeoREF]:https://github.com/andherit/georef
-
+[ptha]: https://github.com/GeoscienceAustralia/ptha
+[subduction-ptha-python]: https://github.com/juanfran-uma/subduction-ptha-python 
 ## Reference 
 If you use this code please reference the following paper which it is based on: 
 
